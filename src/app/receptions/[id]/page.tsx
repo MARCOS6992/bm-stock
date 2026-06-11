@@ -1,7 +1,6 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
 import { BonReception, BonReceptionItem, SousTraitant, Produit } from '@/lib/types'
 import PageHeader from '@/components/PageHeader'
@@ -93,8 +92,8 @@ export default function ReceptionDetailPage({ params }: { params: { id: string }
               <div key={item.id} className="px-4 py-3">
                 <div className="flex items-center justify-between">
                   <div>
-                    <span className="font-medium text-gray-900">{produit?.nom}</span>
-                    <span className="ml-2 text-xs text-gray-500 font-mono">{produit?.reference}</span>
+                    <span className="font-medium text-gray-900">{produit?.designation}</span>
+                    <span className="ml-2 text-xs text-gray-500 font-mono">{produit?.ref}</span>
                   </div>
                   <span className="font-bold text-gray-900">×{item.quantite}</span>
                 </div>

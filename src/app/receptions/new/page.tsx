@@ -10,7 +10,7 @@ import dynamic from 'next/dynamic'
 const SignatureCanvas = dynamic(() => import('@/components/SignatureCanvas'), { ssr: false })
 
 const FOURNISSEURS = ['Axtis', 'Econegoce', 'Clygroup', 'SFTE', 'ACR', 'Browseenegoce']
-const NEED_SERIAL_CATS = ['PAC_AIR_EAU', 'SSC', 'BALLON_ELEC']
+const NEED_SERIAL_CATS = ['PAC Air/Eau', 'SSC', 'Ballon Électrique']
 
 interface LineItem {
   produit: Produit
@@ -32,14 +32,13 @@ export default function NewReceptionPage() {
   const [technicien, setTechnicien] = useState('')
 
   const [lines, setLines] = useState<LineItem[]>([])
-
   const [signature, setSignature] = useState<string | null>(null)
 
   useEffect(() => {
     supabase.from('sous_traitants').select('*').order('nom').then(({ data }) => {
       if (data) setSousTraitants(data)
     })
-    supabase.from('produits').select('*').order('categorie,nom').then(({ data }) => {
+    supabase.from('produits').select('*').order('categorie,designation').then(({ data }) => {
       if (data) setProduits(data)
     })
   }, [])
@@ -208,8 +207,8 @@ export default function NewReceptionPage() {
                 <button key={p.id} onClick={() => addProduct(p)}
                   disabled={!!lines.find(l => l.produit.id === p.id)}
                   className="text-left px-3 py-2 border border-gray-200 rounded-lg text-xs hover:bg-blue-50 hover:border-blue-300 disabled:opacity-40 disabled:cursor-not-allowed transition-colors">
-                  <div className="font-medium text-gray-800">{p.nom}</div>
-                  <div className="text-gray-400">{p.reference}</div>
+                  <div className="font-medium text-gray-800">{p.designation}</div>
+                  <div className="text-gray-400">{p.ref}</div>
                 </button>
               ))}
             </div>
@@ -221,8 +220,8 @@ export default function NewReceptionPage() {
                 <div key={line.produit.id} className="bg-white rounded-xl border border-gray-100 p-4">
                   <div className="flex items-start justify-between mb-3">
                     <div>
-                      <p className="font-medium text-gray-900 text-sm">{line.produit.nom}</p>
-                      <p className="text-xs text-gray-400">{line.produit.reference}</p>
+                      <p className="font-medium text-gray-900 text-sm">{line.produit.designation}</p>
+                      <p className="text-xs text-gray-400">{line.produit.ref}</p>
                     </div>
                     <button onClick={() => removeLine(line.produit.id)} className="text-red-400 hover:text-red-600 text-sm">✕</button>
                   </div>
@@ -271,7 +270,7 @@ export default function NewReceptionPage() {
               <p>Réceptionné par: {technicien}</p>
               <p className="mt-2 font-medium">{lines.reduce((a, l) => a + l.quantite, 0)} article(s):</p>
               {lines.map(l => (
-                <p key={l.produit.id} className="pl-2">• {l.produit.nom} × {l.quantite}</p>
+                <p key={l.produit.id} className="pl-2">• {l.produit.designation} × {l.quantite}</p>
               ))}
             </div>
             <div>

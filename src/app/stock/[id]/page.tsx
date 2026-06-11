@@ -109,8 +109,8 @@ export default function FicheSousTraitant() {
                   className="w-full px-4 py-3 flex items-center justify-between hover:bg-gray-50 transition-colors text-left"
                 >
                   <div>
-                    <span className="font-medium text-gray-900">{group.produit.nom}</span>
-                    <span className="ml-2 text-xs text-gray-400">{group.produit.reference}</span>
+                    <span className="font-medium text-gray-900">{group.produit.designation}</span>
+                    <span className="ml-2 text-xs text-gray-400">{group.produit.ref}</span>
                   </div>
                   <div className="flex items-center gap-3">
                     <span
@@ -185,7 +185,7 @@ export default function FicheSousTraitant() {
                 <div className="mt-2 space-y-1">
                   {pose.items.map((item: any) => (
                     <div key={item.id} className="text-xs text-gray-600 flex gap-2">
-                      <span>• {item.produit?.nom}</span>
+                      <span>• {item.produit?.designation}</span>
                       {item.numero_serie && <span className="font-mono text-gray-400">#{item.numero_serie}</span>}
                     </div>
                   ))}

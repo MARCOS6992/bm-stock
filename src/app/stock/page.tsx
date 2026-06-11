@@ -12,6 +12,8 @@ interface StockRow {
   total: number
 }
 
+const CATEGORIES = ['PAC Air/Eau', 'SSC', 'Ballon Électrique', 'Kit Outillage', 'Accessoires']
+
 export default function StockPage() {
   const [rows, setRows] = useState<StockRow[]>([])
   const [sousTraitants, setSousTraitants] = useState<SousTraitant[]>([])
@@ -24,7 +26,7 @@ export default function StockPage() {
 
   async function loadData() {
     const { data: sts } = await supabase.from('sous_traitants').select('*').order('nom')
-    const { data: produits } = await supabase.from('produits').select('*').order('reference')
+    const { data: produits } = await supabase.from('produits').select('*').order('ref')
     const { data: items } = await supabase
       .from('stock_items')
       .select('*')
@@ -48,7 +50,6 @@ export default function StockPage() {
     setLoading(false)
   }
 
-  const categories = ['PAC_AIR_EAU', 'SSC', 'BALLON_ELEC', 'KIT_OUTILLAGE', 'ACCESSOIRE']
   const filteredRows = filterCategorie
     ? rows.filter((r) => r.produit.categorie === filterCategorie)
     : rows
@@ -66,8 +67,8 @@ export default function StockPage() {
           className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
         >
           <option value="">Toutes les catégories</option>
-          {categories.map((c) => (
-            <option key={c} value={c}>{c.replace(/_/g, ' ')}</option>
+          {CATEGORIES.map((c) => (
+            <option key={c} value={c}>{c}</option>
           ))}
         </select>
       </div>
@@ -76,7 +77,7 @@ export default function StockPage() {
         <table className="min-w-full text-sm">
           <thead>
             <tr className="bg-gray-50 border-b border-gray-200">
-              <th className="text-left px-4 py-3 font-semibold text-gray-700">Référence</th>
+              <th className="text-left px-4 py-3 font-semibold text-gray-700">Réf.</th>
               <th className="text-left px-4 py-3 font-semibold text-gray-700">Produit</th>
               {sousTraitants.map((st) => (
                 <th key={st.id} className="text-center px-4 py-3 font-semibold" style={{ color: st.couleur }}>
@@ -89,12 +90,12 @@ export default function StockPage() {
           </thead>
           <tbody className="divide-y divide-gray-100">
             {filteredRows.map((row) => {
-              const belowThreshold = row.total <= row.produit.seuil_min
+              const belowThreshold = row.total <= (row.produit.seuil_min || 0)
               return (
                 <tr key={row.produit.id} className={belowThreshold ? 'bg-yellow-50' : 'hover:bg-gray-50'}>
-                  <td className="px-4 py-3 font-mono text-xs text-gray-600">{row.produit.reference}</td>
+                  <td className="px-4 py-3 font-mono text-xs text-gray-600">{row.produit.ref}</td>
                   <td className="px-4 py-3 font-medium text-gray-900">
-                    {row.produit.nom}
+                    {row.produit.designation}
                     {belowThreshold && <span className="ml-2 text-yellow-500 text-xs">⚠ Stock bas</span>}
                   </td>
                   {sousTraitants.map((st) => (
@@ -108,7 +109,7 @@ export default function StockPage() {
                     </td>
                   ))}
                   <td className="px-4 py-3 text-center font-bold text-gray-900">{row.total}</td>
-                  <td className="px-4 py-3 text-center text-gray-500">{row.produit.seuil_min}</td>
+                  <td className="px-4 py-3 text-center text-gray-500">{row.produit.seuil_min || 0}</td>
                 </tr>
               )
             })}

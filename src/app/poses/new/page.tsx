@@ -35,17 +35,12 @@ export default function NewPosePage() {
   const [sousTraitantId, setSousTraitantId] = useState('')
 
   const [selectedItems, setSelectedItems] = useState<SelectedItem[]>([])
-
   const [signature, setSignature] = useState<string | null>(null)
 
   useEffect(() => {
-    supabase
-      .from('sous_traitants')
-      .select('*')
-      .order('nom')
-      .then(({ data }) => {
-        if (data) setSousTraitants(data)
-      })
+    supabase.from('sous_traitants').select('*').order('nom').then(({ data }) => {
+      if (data) setSousTraitants(data)
+    })
   }, [])
 
   async function loadStock(stId: string) {
@@ -86,30 +81,19 @@ export default function NewPosePage() {
   }
 
   async function submit() {
-    if (!signature) {
-      alert('Signature obligatoire')
-      return
-    }
+    if (!signature) { alert('Signature obligatoire'); return }
     setLoading(true)
     try {
       const blob = await fetch(signature).then((r) => r.blob())
       const filename = `bp-${Date.now()}.png`
       let signatureUrl: string | null = null
-      const { data: uploadData } = await supabase.storage
-        .from('signatures')
-        .upload(filename, blob)
+      const { data: uploadData } = await supabase.storage.from('signatures').upload(filename, blob)
       if (uploadData) {
-        const { data: urlData } = supabase.storage
-          .from('signatures')
-          .getPublicUrl(filename)
+        const { data: urlData } = supabase.storage.from('signatures').getPublicUrl(filename)
         signatureUrl = urlData.publicUrl
       }
 
-      const { data: lastBp } = await supabase
-        .from('bons_pose')
-        .select('numero')
-        .order('numero', { ascending: false })
-        .limit(1)
+      const { data: lastBp } = await supabase.from('bons_pose').select('numero').order('numero', { ascending: false }).limit(1)
       let seq = 1
       if (lastBp && lastBp.length > 0) {
         const match = lastBp[0].numero.match(/(\d+)$/)
@@ -118,36 +102,21 @@ export default function NewPosePage() {
       const numero = `BP-${new Date().getFullYear()}-${String(seq).padStart(4, '0')}`
 
       const datePose = new Date().toISOString().split('T')[0]
-      const { data: bp, error } = await supabase
-        .from('bons_pose')
-        .insert({
-          numero,
-          client,
-          adresse_chantier: adresseChantier,
-          code_cee: codeCee || null,
-          numero_dossier: numeroDossier || null,
-          sous_traitant_id: sousTraitantId,
-          technicien,
-          statut: 'valide',
-          signature_url: signatureUrl,
-          date_pose: datePose,
-        })
-        .select()
-        .single()
+      const { data: bp, error } = await supabase.from('bons_pose').insert({
+        numero, client, adresse_chantier: adresseChantier,
+        code_cee: codeCee || null, numero_dossier: numeroDossier || null,
+        sous_traitant_id: sousTraitantId, technicien,
+        statut: 'valide', signature_url: signatureUrl, date_pose: datePose,
+      }).select().single()
 
       if (error || !bp) throw error
 
       for (const { stockItem, produit } of selectedItems) {
         await supabase.from('bons_pose_items').insert({
-          bon_pose_id: bp.id,
-          stock_item_id: stockItem.id,
-          produit_id: produit.id,
-          numero_serie: stockItem.numero_serie,
+          bon_pose_id: bp.id, stock_item_id: stockItem.id,
+          produit_id: produit.id, numero_serie: stockItem.numero_serie,
         })
-        await supabase
-          .from('stock_items')
-          .update({ statut: 'pose' })
-          .eq('id', stockItem.id)
+        await supabase.from('stock_items').update({ statut: 'pose' }).eq('id', stockItem.id)
       }
 
       router.push('/poses')
@@ -165,25 +134,17 @@ export default function NewPosePage() {
   return (
     <div className="max-w-2xl mx-auto space-y-6">
       <div className="flex items-center gap-4">
-        <Link href="/poses" className="text-gray-400 hover:text-gray-600 text-sm">
-          ← Retour
-        </Link>
+        <Link href="/poses" className="text-gray-400 hover:text-gray-600 text-sm">← Retour</Link>
         <h1 className="text-xl font-bold text-gray-900">Nouveau bon de pose</h1>
       </div>
 
       <div className="flex items-center gap-2">
         {[1, 2, 3].map((s) => (
           <div key={s} className="flex items-center gap-2">
-            <div
-              className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${
-                step >= s ? 'bg-green-600 text-white' : 'bg-gray-200 text-gray-500'
-              }`}
-            >
-              {s}
-            </div>
-            {s < 3 && (
-              <div className={`h-0.5 w-8 ${step > s ? 'bg-green-600' : 'bg-gray-200'}`} />
-            )}
+            <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${
+              step >= s ? 'bg-green-600 text-white' : 'bg-gray-200 text-gray-500'
+            }`}>{s}</div>
+            {s < 3 && <div className={`h-0.5 w-8 ${step > s ? 'bg-green-600' : 'bg-gray-200'}`} />}
           </div>
         ))}
         <div className="ml-2 text-sm text-gray-500">
@@ -195,69 +156,41 @@ export default function NewPosePage() {
         <div className="bg-white rounded-xl border border-gray-100 p-6 space-y-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Client *</label>
-            <input
-              value={client}
-              onChange={(e) => setClient(e.target.value)}
-              placeholder="Nom du client"
-              className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
-            />
+            <input value={client} onChange={(e) => setClient(e.target.value)} placeholder="Nom du client"
+              className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-green-500" />
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Adresse du chantier *</label>
-            <input
-              value={adresseChantier}
-              onChange={(e) => setAdresseChantier(e.target.value)}
-              placeholder="Adresse complète"
-              className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
-            />
+            <input value={adresseChantier} onChange={(e) => setAdresseChantier(e.target.value)} placeholder="Adresse complète"
+              className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-green-500" />
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Code CEE</label>
-              <input
-                value={codeCee}
-                onChange={(e) => setCodeCee(e.target.value)}
-                placeholder="ex: CEE-2026-001"
-                className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
-              />
+              <input value={codeCee} onChange={(e) => setCodeCee(e.target.value)} placeholder="ex: CEE-2026-001"
+                className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-green-500" />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">N° dossier</label>
-              <input
-                value={numeroDossier}
-                onChange={(e) => setNumeroDossier(e.target.value)}
-                placeholder="ex: DOS-2026-001"
-                className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
-              />
+              <input value={numeroDossier} onChange={(e) => setNumeroDossier(e.target.value)} placeholder="ex: DOS-2026-001"
+                className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-green-500" />
             </div>
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Technicien *</label>
-            <input
-              value={technicien}
-              onChange={(e) => setTechnicien(e.target.value)}
-              placeholder="Nom du technicien"
-              className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
-            />
+            <input value={technicien} onChange={(e) => setTechnicien(e.target.value)} placeholder="Nom du technicien"
+              className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-green-500" />
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Sous-traitant *</label>
-            <select
-              value={sousTraitantId}
-              onChange={(e) => handleSousTraitantChange(e.target.value)}
-              className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
-            >
+            <select value={sousTraitantId} onChange={(e) => handleSousTraitantChange(e.target.value)}
+              className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-green-500">
               <option value="">Sélectionner...</option>
-              {sousTraitants.map((st) => (
-                <option key={st.id} value={st.id}>{st.nom}</option>
-              ))}
+              {sousTraitants.map((st) => <option key={st.id} value={st.id}>{st.nom}</option>)}
             </select>
           </div>
-          <button
-            onClick={() => setStep(2)}
-            disabled={!step1Valid}
-            className="w-full bg-green-600 text-white py-3 rounded-lg font-medium disabled:opacity-40 hover:bg-green-700 transition-colors"
-          >
+          <button onClick={() => setStep(2)} disabled={!step1Valid}
+            className="w-full bg-green-600 text-white py-3 rounded-lg font-medium disabled:opacity-40 hover:bg-green-700 transition-colors">
             Suivant →
           </button>
         </div>
@@ -266,46 +199,24 @@ export default function NewPosePage() {
       {step === 2 && (
         <div className="space-y-4">
           {loadingStock ? (
-            <div className="bg-white rounded-xl border border-gray-100 p-8 text-center text-gray-400">
-              Chargement du stock...
-            </div>
+            <div className="bg-white rounded-xl border border-gray-100 p-8 text-center text-gray-400">Chargement du stock...</div>
           ) : stockGroups.length === 0 ? (
-            <div className="bg-white rounded-xl border border-gray-100 p-8 text-center text-gray-400">
-              Aucun article en stock pour ce sous-traitant
-            </div>
+            <div className="bg-white rounded-xl border border-gray-100 p-8 text-center text-gray-400">Aucun article en stock pour ce sous-traitant</div>
           ) : (
             <div className="space-y-4">
-              <p className="text-sm text-gray-600">
-                Sélectionnez les articles à poser ({selectedItems.length} sélectionné
-                {selectedItems.length !== 1 ? 's' : ''})
-              </p>
+              <p className="text-sm text-gray-600">Sélectionnez les articles à poser ({selectedItems.length} sélectionné{selectedItems.length !== 1 ? 's' : ''})</p>
               {stockGroups.map((group) => (
-                <div
-                  key={group.produit.id}
-                  className="bg-white rounded-xl border border-gray-100 overflow-hidden"
-                >
+                <div key={group.produit.id} className="bg-white rounded-xl border border-gray-100 overflow-hidden">
                   <div className="px-4 py-3 bg-gray-50 border-b border-gray-100">
-                    <p className="font-medium text-gray-900 text-sm">{group.produit.nom}</p>
-                    <p className="text-xs text-gray-400">{group.produit.reference}</p>
+                    <p className="font-medium text-gray-900 text-sm">{group.produit.designation}</p>
+                    <p className="text-xs text-gray-400">{group.produit.ref}</p>
                   </div>
                   <div className="divide-y divide-gray-50">
                     {group.items.map((item) => {
-                      const isSelected = !!selectedItems.find(
-                        (si) => si.stockItem.id === item.id
-                      )
+                      const isSelected = !!selectedItems.find((si) => si.stockItem.id === item.id)
                       return (
-                        <label
-                          key={item.id}
-                          className={`flex items-center gap-3 px-4 py-3 cursor-pointer hover:bg-gray-50 transition-colors ${
-                            isSelected ? 'bg-green-50' : ''
-                          }`}
-                        >
-                          <input
-                            type="checkbox"
-                            checked={isSelected}
-                            onChange={() => toggleItem(item, group.produit)}
-                            className="w-4 h-4 text-green-600 rounded"
-                          />
+                        <label key={item.id} className={`flex items-center gap-3 px-4 py-3 cursor-pointer hover:bg-gray-50 transition-colors ${isSelected ? 'bg-green-50' : ''}`}>
+                          <input type="checkbox" checked={isSelected} onChange={() => toggleItem(item, group.produit)} className="w-4 h-4 text-green-600 rounded" />
                           <div className="flex-1 text-sm">
                             {item.numero_serie ? (
                               <span className="font-mono text-gray-700">N° {item.numero_serie}</span>
@@ -313,9 +224,7 @@ export default function NewPosePage() {
                               <span className="text-gray-400 italic">Sans numéro de série</span>
                             )}
                           </div>
-                          {item.fournisseur && (
-                            <span className="text-xs text-gray-400">{item.fournisseur}</span>
-                          )}
+                          {item.fournisseur && <span className="text-xs text-gray-400">{item.fournisseur}</span>}
                         </label>
                       )
                     })}
@@ -324,21 +233,9 @@ export default function NewPosePage() {
               ))}
             </div>
           )}
-
           <div className="flex gap-3">
-            <button
-              onClick={() => setStep(1)}
-              className="flex-1 py-3 border border-gray-200 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50"
-            >
-              ← Retour
-            </button>
-            <button
-              onClick={() => setStep(3)}
-              disabled={!step2Valid}
-              className="flex-1 bg-green-600 text-white py-3 rounded-lg font-medium disabled:opacity-40 hover:bg-green-700 transition-colors"
-            >
-              Suivant →
-            </button>
+            <button onClick={() => setStep(1)} className="flex-1 py-3 border border-gray-200 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50">← Retour</button>
+            <button onClick={() => setStep(3)} disabled={!step2Valid} className="flex-1 bg-green-600 text-white py-3 rounded-lg font-medium disabled:opacity-40 hover:bg-green-700 transition-colors">Suivant →</button>
           </div>
         </div>
       )}
@@ -354,15 +251,10 @@ export default function NewPosePage() {
               {numeroDossier && <p><strong>Dossier:</strong> {numeroDossier}</p>}
               <p><strong>Technicien:</strong> {technicien}</p>
               <p><strong>Sous-traitant:</strong> {sousTraitants.find((s) => s.id === sousTraitantId)?.nom}</p>
-              <p className="mt-2 font-medium">
-                {selectedItems.length} article{selectedItems.length !== 1 ? 's' : ''} à poser:
-              </p>
+              <p className="mt-2 font-medium">{selectedItems.length} article{selectedItems.length !== 1 ? 's' : ''} à poser:</p>
               {selectedItems.map(({ stockItem, produit }) => (
                 <p key={stockItem.id} className="pl-2 text-xs">
-                  • {produit.nom}
-                  {stockItem.numero_serie && (
-                    <span className="ml-2 font-mono text-gray-400">#{stockItem.numero_serie}</span>
-                  )}
+                  • {produit.designation}{stockItem.numero_serie && <span className="ml-2 font-mono text-gray-400">#{stockItem.numero_serie}</span>}
                 </p>
               ))}
             </div>
@@ -372,19 +264,9 @@ export default function NewPosePage() {
               {signature && <p className="text-xs text-green-600 mt-1">Signature enregistrée</p>}
             </div>
           </div>
-
           <div className="flex gap-3">
-            <button
-              onClick={() => setStep(2)}
-              className="flex-1 py-3 border border-gray-200 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50"
-            >
-              ← Retour
-            </button>
-            <button
-              onClick={submit}
-              disabled={!signature || loading}
-              className="flex-1 bg-green-600 text-white py-3 rounded-lg font-medium disabled:opacity-40 hover:bg-green-700 transition-colors"
-            >
+            <button onClick={() => setStep(2)} className="flex-1 py-3 border border-gray-200 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50">← Retour</button>
+            <button onClick={submit} disabled={!signature || loading} className="flex-1 bg-green-600 text-white py-3 rounded-lg font-medium disabled:opacity-40 hover:bg-green-700 transition-colors">
               {loading ? 'Enregistrement...' : 'Valider le bon de pose'}
             </button>
           </div>

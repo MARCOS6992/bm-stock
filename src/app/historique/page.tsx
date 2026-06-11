@@ -9,8 +9,8 @@ import { fr } from 'date-fns/locale'
 interface HistoriqueRow {
   id: string
   client: string
-  reference_produit: string
-  nom_produit: string
+  ref_produit: string
+  designation_produit: string
   numero_serie: string | null
   technicien: string
   sous_traitant: string
@@ -27,9 +27,7 @@ export default function HistoriquePage() {
   const [search, setSearch] = useState('')
   const [loading, setLoading] = useState(true)
 
-  useEffect(() => {
-    loadData()
-  }, [])
+  useEffect(() => { loadData() }, [])
 
   async function loadData() {
     const { data, error } = await supabase
@@ -37,31 +35,20 @@ export default function HistoriquePage() {
       .select(`
         id,
         numero_serie,
-        bon_pose:bons_pose(
-          numero,
-          client,
-          code_cee,
-          technicien,
-          date_pose,
-          sous_traitant:sous_traitants(nom, couleur)
-        ),
-        produit:produits(reference, nom),
+        bon_pose:bons_pose(numero, client, code_cee, technicien, date_pose, sous_traitant:sous_traitants(nom, couleur)),
+        produit:produits(ref, designation),
         stock_item:stock_items(fournisseur, numero_bl_fournisseur)
       `)
       .order('created_at', { ascending: false })
 
-    if (error) {
-      console.error(error)
-      setLoading(false)
-      return
-    }
+    if (error) { console.error(error); setLoading(false); return }
 
     if (data) {
       const mapped: HistoriqueRow[] = data.map((item: any) => ({
         id: item.id,
         client: item.bon_pose?.client || '',
-        reference_produit: item.produit?.reference || '',
-        nom_produit: item.produit?.nom || '',
+        ref_produit: item.produit?.ref || '',
+        designation_produit: item.produit?.designation || '',
         numero_serie: item.numero_serie,
         technicien: item.bon_pose?.technicien || '',
         sous_traitant: item.bon_pose?.sous_traitant?.nom || '',
@@ -82,8 +69,8 @@ export default function HistoriquePage() {
         const q = search.toLowerCase()
         return (
           r.client.toLowerCase().includes(q) ||
-          r.reference_produit.toLowerCase().includes(q) ||
-          r.nom_produit.toLowerCase().includes(q) ||
+          r.ref_produit.toLowerCase().includes(q) ||
+          r.designation_produit.toLowerCase().includes(q) ||
           (r.numero_serie || '').toLowerCase().includes(q) ||
           r.technicien.toLowerCase().includes(q) ||
           r.sous_traitant.toLowerCase().includes(q) ||
@@ -95,13 +82,7 @@ export default function HistoriquePage() {
       })
     : rows
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64 text-gray-500">
-        Chargement...
-      </div>
-    )
-  }
+  if (loading) return <div className="flex items-center justify-center h-64 text-gray-500">Chargement...</div>
 
   return (
     <div>
@@ -111,18 +92,10 @@ export default function HistoriquePage() {
       />
 
       <div className="mb-4">
-        <input
-          type="search"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
+        <input type="search" value={search} onChange={(e) => setSearch(e.target.value)}
           placeholder="Rechercher par client, produit, numéro de série, technicien..."
-          className="w-full border border-gray-200 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-        />
-        {search && (
-          <p className="text-xs text-gray-400 mt-1">
-            {filteredRows.length} résultat{filteredRows.length !== 1 ? 's' : ''} pour "{search}"
-          </p>
-        )}
+          className="w-full border border-gray-200 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+        {search && <p className="text-xs text-gray-400 mt-1">{filteredRows.length} résultat{filteredRows.length !== 1 ? 's' : ''} pour "{search}"</p>}
       </div>
 
       {filteredRows.length === 0 ? (
@@ -152,36 +125,23 @@ export default function HistoriquePage() {
                   <td className="px-4 py-3 font-mono text-xs text-blue-600">{row.numero_bon_pose}</td>
                   <td className="px-4 py-3 font-medium text-gray-900">{row.client}</td>
                   <td className="px-4 py-3">
-                    <div className="font-medium text-gray-900 text-xs">{row.nom_produit}</div>
-                    <div className="text-gray-400 font-mono text-xs">{row.reference_produit}</div>
+                    <div className="font-medium text-gray-900 text-xs">{row.designation_produit}</div>
+                    <div className="text-gray-400 font-mono text-xs">{row.ref_produit}</div>
                   </td>
-                  <td className="px-4 py-3 font-mono text-xs text-gray-600">
-                    {row.numero_serie || <span className="text-gray-300">—</span>}
-                  </td>
+                  <td className="px-4 py-3 font-mono text-xs text-gray-600">{row.numero_serie || <span className="text-gray-300">—</span>}</td>
                   <td className="px-4 py-3 text-gray-700">{row.technicien}</td>
                   <td className="px-4 py-3">
                     {row.sous_traitant && (
-                      <span
-                        className="inline-block px-2 py-0.5 rounded text-white text-xs font-medium"
-                        style={{ backgroundColor: row.couleur_st }}
-                      >
+                      <span className="inline-block px-2 py-0.5 rounded text-white text-xs font-medium" style={{ backgroundColor: row.couleur_st }}>
                         {row.sous_traitant}
                       </span>
                     )}
                   </td>
-                  <td className="px-4 py-3 text-gray-600 text-xs">
-                    {row.fournisseur || <span className="text-gray-300">—</span>}
-                  </td>
-                  <td className="px-4 py-3 font-mono text-xs text-gray-600">
-                    {row.numero_bl_fournisseur || <span className="text-gray-300">—</span>}
-                  </td>
-                  <td className="px-4 py-3 text-xs text-gray-600">
-                    {row.code_cee || <span className="text-gray-300">—</span>}
-                  </td>
+                  <td className="px-4 py-3 text-gray-600 text-xs">{row.fournisseur || <span className="text-gray-300">—</span>}</td>
+                  <td className="px-4 py-3 font-mono text-xs text-gray-600">{row.numero_bl_fournisseur || <span className="text-gray-300">—</span>}</td>
+                  <td className="px-4 py-3 text-xs text-gray-600">{row.code_cee || <span className="text-gray-300">—</span>}</td>
                   <td className="px-4 py-3 text-xs text-gray-500">
-                    {row.date_pose
-                      ? format(new Date(row.date_pose), 'dd/MM/yyyy', { locale: fr })
-                      : <span className="text-gray-300">—</span>}
+                    {row.date_pose ? format(new Date(row.date_pose), 'dd/MM/yyyy', { locale: fr }) : <span className="text-gray-300">—</span>}
                   </td>
                 </tr>
               ))}

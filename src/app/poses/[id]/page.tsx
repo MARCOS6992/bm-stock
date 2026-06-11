@@ -40,53 +40,21 @@ export default function PoseDetailPage({ params }: { params: { id: string } }) {
 
   return (
     <div>
-      <PageHeader
-        title={pose.numero}
-        subtitle={pose.statut === 'finalise' ? 'Finalisé' : 'Brouillon'}
-        backHref="/poses"
-      />
+      <PageHeader title={pose.numero} subtitle={pose.statut === 'finalise' ? 'Finalisé' : 'Brouillon'} backHref="/poses" />
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
         <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
           <h3 className="font-semibold text-gray-700 mb-3">Informations chantier</h3>
           <dl className="space-y-2 text-sm">
-            <div className="flex justify-between">
-              <dt className="text-gray-500">Client</dt>
-              <dd className="font-medium">{pose.client}</dd>
-            </div>
-            <div>
-              <dt className="text-gray-500 mb-1">Adresse</dt>
-              <dd className="text-gray-800">{pose.adresse_chantier}</dd>
-            </div>
-            {pose.code_cee && (
-              <div className="flex justify-between">
-                <dt className="text-gray-500">Code CEE</dt>
-                <dd className="font-medium">{pose.code_cee}</dd>
-              </div>
-            )}
-            {pose.numero_dossier && (
-              <div className="flex justify-between">
-                <dt className="text-gray-500">N° Dossier</dt>
-                <dd className="font-medium">{pose.numero_dossier}</dd>
-              </div>
-            )}
-            <div className="flex justify-between">
-              <dt className="text-gray-500">Sous-traitant</dt>
-              <dd className="font-medium" style={{ color: st?.couleur }}>{st?.nom}</dd>
-            </div>
-            <div className="flex justify-between">
-              <dt className="text-gray-500">Technicien</dt>
-              <dd className="font-medium">{pose.technicien}</dd>
-            </div>
-            {pose.date_pose && (
-              <div className="flex justify-between">
-                <dt className="text-gray-500">Date de pose</dt>
-                <dd className="font-medium">{format(new Date(pose.date_pose), 'dd/MM/yyyy', { locale: fr })}</dd>
-              </div>
-            )}
+            <div className="flex justify-between"><dt className="text-gray-500">Client</dt><dd className="font-medium">{pose.client}</dd></div>
+            <div><dt className="text-gray-500 mb-1">Adresse</dt><dd className="text-gray-800">{pose.adresse_chantier}</dd></div>
+            {pose.code_cee && <div className="flex justify-between"><dt className="text-gray-500">Code CEE</dt><dd className="font-medium">{pose.code_cee}</dd></div>}
+            {pose.numero_dossier && <div className="flex justify-between"><dt className="text-gray-500">N° Dossier</dt><dd className="font-medium">{pose.numero_dossier}</dd></div>}
+            <div className="flex justify-between"><dt className="text-gray-500">Sous-traitant</dt><dd className="font-medium" style={{ color: st?.couleur }}>{st?.nom}</dd></div>
+            <div className="flex justify-between"><dt className="text-gray-500">Technicien</dt><dd className="font-medium">{pose.technicien}</dd></div>
+            {pose.date_pose && <div className="flex justify-between"><dt className="text-gray-500">Date de pose</dt><dd className="font-medium">{format(new Date(pose.date_pose), 'dd/MM/yyyy', { locale: fr })}</dd></div>}
           </dl>
         </div>
-
         {pose.signature_url && (
           <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
             <h3 className="font-semibold text-gray-700 mb-3">Signature</h3>
@@ -105,13 +73,11 @@ export default function PoseDetailPage({ params }: { params: { id: string } }) {
             return (
               <div key={item.id} className="px-4 py-3 flex items-center justify-between text-sm">
                 <div>
-                  <span className="font-medium text-gray-900">{produit?.nom}</span>
-                  <span className="ml-2 text-xs text-gray-500 font-mono">{produit?.reference}</span>
+                  <span className="font-medium text-gray-900">{produit?.designation}</span>
+                  <span className="ml-2 text-xs text-gray-500 font-mono">{produit?.ref}</span>
                 </div>
                 {item.numero_serie && (
-                  <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded font-mono">
-                    {item.numero_serie}
-                  </span>
+                  <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded font-mono">{item.numero_serie}</span>
                 )}
               </div>
             )
