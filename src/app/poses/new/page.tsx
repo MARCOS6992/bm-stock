@@ -36,7 +36,7 @@ export default function NewPosePage() {
 
   async function loadStock(stId: string) {
     setLoadingStock(true)
-    const { data: units } = await supabase.from('stock').select('*, produit:produits(*)').eq('sous_traitant_id', stId)
+    const { data: units } = await supabase.from('unites').select('*, produit:produits(*)').eq('sous_traitant_id', stId)
     const { data: posedItems } = await supabase.from('lignes_pose').select('unite_id')
     if (!units) { setLoadingStock(false); return }
     const posedIds = new Set((posedItems || []).map((lp: any) => lp.unite_id))

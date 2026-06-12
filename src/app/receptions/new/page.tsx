@@ -104,11 +104,11 @@ export default function NewReceptionPage() {
         if (ligne.produit.necessite_serie) {
           for (const serie of ligne.series) {
             if (!serie) continue
-            await supabase.from('stock').insert({ reference_id: ligne.produit.id, sous_traitant_id: sousTraitantId, numero_serie: serie, fournisseur: distributeur })
+            await supabase.from('unites').insert({ reference_id: ligne.produit.id, sous_traitant_id: sousTraitantId, numero_serie: serie, fournisseur: distributeur })
           }
         } else {
           for (let j = 0; j < ligne.qte; j++) {
-            await supabase.from('stock').insert({ reference_id: ligne.produit.id, sous_traitant_id: sousTraitantId, numero_serie: null, fournisseur: distributeur })
+            await supabase.from('unites').insert({ reference_id: ligne.produit.id, sous_traitant_id: sousTraitantId, numero_serie: null, fournisseur: distributeur })
           }
         }
       }

@@ -21,7 +21,7 @@ export default function StockPage() {
 
   async function loadData() {
     const { data: units } = await supabase
-      .from('stock')
+      .from('unites')
       .select('*, produit:produits(*), sous_traitant:sous_traitants(*)')
 
     const { data: posedItems } = await supabase.from('lignes_pose').select('unite_id')

@@ -14,7 +14,7 @@ export default function StockDetailPage({ params }: { params: { id: string } }) 
 
   async function loadData() {
     const { data } = await supabase
-      .from('stock')
+      .from('unites')
       .select('*, produit:produits(*), sous_traitant:sous_traitants(*)')
       .eq('id', params.id)
       .single()

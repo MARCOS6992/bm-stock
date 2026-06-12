@@ -14,7 +14,7 @@ export default function HomePage() {
 
   async function loadStats() {
     const [{ count: stockTotal }, { count: posedCount }, { count: receptions }, { count: poses }] = await Promise.all([
-      supabase.from('stock').select('*', { count: 'exact', head: true }),
+      supabase.from('unites').select('*', { count: 'exact', head: true }),
       supabase.from('lignes_pose').select('*', { count: 'exact', head: true }),
       supabase.from('bons_reception').select('*', { count: 'exact', head: true }),
       supabase.from('bons_pose').select('*', { count: 'exact', head: true }),
