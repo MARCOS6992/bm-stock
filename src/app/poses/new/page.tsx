@@ -19,6 +19,7 @@ export default function NewPosePage() {
   const [stockGroups, setStockGroups] = useState<StockGroup[]>([])
   const [loading, setLoading] = useState(false)
   const [loadingStock, setLoadingStock] = useState(false)
+  const [errorMsg, setErrorMsg] = useState<string | null>(null)
 
   const [client, setClient] = useState('')
   const [adresseChantier, setAdresseChantier] = useState('')
@@ -66,6 +67,7 @@ export default function NewPosePage() {
   async function submit() {
     if (!signature) { alert('Signature obligatoire'); return }
     setLoading(true)
+    setErrorMsg(null)
     try {
       const blob = await fetch(signature).then((r) => r.blob())
       const filename = `bp-${Date.now()}.png`
@@ -81,22 +83,37 @@ export default function NewPosePage() {
       if (lastBp && lastBp.length > 0) { const match = lastBp[0].numero.match(/(\d+)$/); if (match) seq = parseInt(match[1]) + 1 }
       const numero = `BP-${new Date().getFullYear()}-${String(seq).padStart(4, '0')}`
 
-      const { data: bp, error } = await supabase.from('bons_pose').insert({
+      const { data: bp, error: bpError } = await supabase.from('bons_pose').insert({
         numero, client, adresse_chantier: adresseChantier, code_cee: codeCee || null,
-        numero_dossier: numeroDossier || null, technicion, sous_traitant_id: sousTraitantId, notes: notes || null, signature_url: signatureUrl,
+        numero_dossier: numeroDossier || null, technicion, sous_traitant_id: sousTraitantId,
+        notes: notes || null, signature_url: signatureUrl,
       }).select().single()
 
-      if (error || !bp) throw error
+      if (bpError || !bp) {
+        setErrorMsg('Erreur bons_pose: ' + JSON.stringify(bpError))
+        setLoading(false)
+        return
+      }
 
       for (const { unit, produit } of selectedItems) {
-        await supabase.from('lignes_pose').insert({
-          bon_pose_id: bp.id, unite_id: unit.id, ref: produit.ref, designation: produit.designation,
-          numero_serie: unit.numero_serie, fournisseur: unit.fournisseur, bl_fournisseur: null,
+        const { error: lpError } = await supabase.from('lignes_pose').insert({
+          bon_pose_id: bp.id,
+          unite_id: unit.id,
+          ref: produit.ref,
+          designation: produit.designation,
+          numero_serie: unit.numero_serie,
+          fournisseur: unit.fournisseur,
+          bl_fournisseur: (unit as any).bl_fournisseur || null,
         })
+        if (lpError) {
+          setErrorMsg('Erreur lignes_pose: ' + JSON.stringify(lpError))
+          setLoading(false)
+          return
+        }
       }
       router.push('/poses')
-    } catch (err) {
-      console.error(err); alert('Erreur lors de la création')
+    } catch (err: any) {
+      setErrorMsg('Exception: ' + (err?.message || JSON.stringify(err)))
     } finally { setLoading(false) }
   }
 
@@ -120,6 +137,12 @@ export default function NewPosePage() {
         ))}
         <div className="ml-2 text-sm text-gray-500">{step === 1 ? 'Informations chantier' : step === 2 ? 'Articles posés' : 'Signature'}</div>
       </div>
+
+      {errorMsg && (
+        <div className="bg-red-50 border border-red-200 rounded-lg p-3 text-xs text-red-700 font-mono break-all">
+          {errorMsg}
+        </div>
+      )}
 
       {step === 1 && (
         <div className="bg-white rounded-xl border border-gray-100 p-6 space-y-4">
