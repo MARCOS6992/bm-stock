@@ -47,7 +47,9 @@ export default function PosesPage() {
                 {p.adresse_chantier && <p className="text-xs text-gray-400 mt-0.5 truncate max-w-xs">{p.adresse_chantier}</p>}
               </div>
               <div className="text-right text-xs text-gray-400">
-                {format(new Date(p.created_at), 'dd/MM/yyyy', { locale: fr })}
+                {p.date_pose
+                  ? format(new Date(p.date_pose), 'dd/MM/yyyy', { locale: fr })
+                  : format(new Date(p.created_at), 'dd/MM/yyyy', { locale: fr })}
                 {p.code_cee && <div className="mt-1">CEE: {p.code_cee}</div>}
               </div>
             </Link>

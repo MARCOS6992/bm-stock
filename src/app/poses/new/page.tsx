@@ -25,7 +25,7 @@ export default function NewPosePage() {
   const [adresseChantier, setAdresseChantier] = useState('')
   const [codeCee, setCodeCee] = useState('')
   const [numeroDossier, setNumeroDossier] = useState('')
-  const [technicion, setTechnicion] = useState('')
+  const [datePose, setDatePose] = useState(new Date().toISOString().split('T')[0])
   const [sousTraitantId, setSousTraitantId] = useState('')
   const [notes, setNotes] = useState('')
   const [selectedItems, setSelectedItems] = useState<SelectedItem[]>([])
@@ -84,9 +84,15 @@ export default function NewPosePage() {
       const numero = `BP-${new Date().getFullYear()}-${String(seq).padStart(4, '0')}`
 
       const { data: bp, error: bpError } = await supabase.from('bons_pose').insert({
-        numero, client, adresse_chantier: adresseChantier, code_cee: codeCee || null,
-        numero_dossier: numeroDossier || null, technicion, sous_traitant_id: sousTraitantId,
-        notes: notes || null, signature_url: signatureUrl,
+        numero,
+        client,
+        adresse_chantier: adresseChantier,
+        code_cee: codeCee || null,
+        numero_dossier: numeroDossier || null,
+        sous_traitant_id: sousTraitantId,
+        notes: notes || null,
+        signature_url: signatureUrl,
+        date_pose: datePose,
       }).select().single()
 
       if (bpError || !bp) {
@@ -117,7 +123,7 @@ export default function NewPosePage() {
     } finally { setLoading(false) }
   }
 
-  const step1Valid = client && adresseChantier && technicion && sousTraitantId
+  const step1Valid = client && adresseChantier && datePose && sousTraitantId
   const step2Valid = selectedItems.length > 0
 
   return (
@@ -168,18 +174,20 @@ export default function NewPosePage() {
                 className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-green-500" />
             </div>
           </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Technicien *</label>
-            <input value={technicion} onChange={(e) => setTechnicion(e.target.value)} placeholder="Nom du technicien"
-              className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-green-500" />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Sous-traitant *</label>
-            <select value={sousTraitantId} onChange={(e) => handleSousTraitantChange(e.target.value)}
-              className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-green-500">
-              <option value="">Sélectionner...</option>
-              {sousTraitants.map((st) => <option key={st.id} value={st.id}>{st.nom}</option>)}
-            </select>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Date de pose *</label>
+              <input type="date" value={datePose} onChange={(e) => setDatePose(e.target.value)}
+                className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-green-500" />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Sous-traitant *</label>
+              <select value={sousTraitantId} onChange={(e) => handleSousTraitantChange(e.target.value)}
+                className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-green-500">
+                <option value="">Sélectionner...</option>
+                {sousTraitants.map((st) => <option key={st.id} value={st.id}>{st.nom}</option>)}
+              </select>
+            </div>
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Notes</label>
@@ -240,7 +248,7 @@ export default function NewPosePage() {
               <p><strong>Chantier:</strong> {adresseChantier}</p>
               {codeCee && <p><strong>Code CEE:</strong> {codeCee}</p>}
               {numeroDossier && <p><strong>Dossier:</strong> {numeroDossier}</p>}
-              <p><strong>Technicien:</strong> {technicion}</p>
+              <p><strong>Date de pose:</strong> {datePose}</p>
               <p><strong>Sous-traitant:</strong> {sousTraitants.find((s) => s.id === sousTraitantId)?.nom}</p>
               <p className="mt-2 font-medium">{selectedItems.length} article{selectedItems.length !== 1 ? 's' : ''} à poser:</p>
               {selectedItems.map(({ unit, produit }) => (

@@ -66,10 +66,10 @@ export interface BonPose {
   adresse_chantier: string
   code_cee: string | null
   numero_dossier: string | null
-  technicion: string
   sous_traitant_id: string
   notes: string | null
   signature_url: string | null
+  date_pose: string | null
   created_at: string
   sous_traitant?: SousTraitant
 }
