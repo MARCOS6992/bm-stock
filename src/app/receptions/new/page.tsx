@@ -90,31 +90,53 @@ export default function NewReceptionPage() {
       if (lastBr && lastBr.length > 0) { const match = lastBr[0].numero.match(/(\d+)$/); if (match) seq = parseInt(match[1]) + 1 }
       const numero = `BR-${new Date().getFullYear()}-${String(seq).padStart(4, '0')}`
 
-      const { data: br, error } = await supabase.from('bons_reception').insert({
+      const { data: br, error: brError } = await supabase.from('bons_reception').insert({
         numero, distributeur, bl_fournisseur: blFournisseur, date_reception: dateReception,
         receptionne_par: receptionnePar, sous_traitant_id: sousTraitantId, notes: notes || null, signature_url: signatureUrl,
       }).select().single()
 
-      if (error || !br) throw error
+      if (brError || !br) throw brError
 
       for (const ligne of lignes) {
-        await supabase.from('lignes_reception').insert({
+        const { error: lrError } = await supabase.from('lignes_reception').insert({
           bon_reception_id: br.id, reference_id: ligne.produit.id, qte: ligne.qte, series: ligne.series.filter(Boolean),
         })
+        if (lrError) console.error('lignes_reception error:', lrError)
+
         if (ligne.produit.necessite_serie) {
           for (const serie of ligne.series) {
             if (!serie) continue
-            await supabase.from('unites').insert({ reference_id: ligne.produit.id, sous_traitant_id: sousTraitantId, numero_serie: serie, fournisseur: distributeur })
+            const { error: uError } = await supabase.from('unites').insert({
+              reference_id: ligne.produit.id,
+              sous_traitant_id: sousTraitantId,
+              numero_serie: serie,
+              fournisseur: distributeur,
+              bl_fournisseur: blFournisseur,
+              bon_reception_id: br.id,
+              date_entree: dateReception,
+              statut: 'dispo',
+            })
+            if (uError) console.error('unites insert error:', uError)
           }
         } else {
           for (let j = 0; j < ligne.qte; j++) {
-            await supabase.from('unites').insert({ reference_id: ligne.produit.id, sous_traitant_id: sousTraitantId, numero_serie: null, fournisseur: distributeur })
+            const { error: uError } = await supabase.from('unites').insert({
+              reference_id: ligne.produit.id,
+              sous_traitant_id: sousTraitantId,
+              numero_serie: null,
+              fournisseur: distributeur,
+              bl_fournisseur: blFournisseur,
+              bon_reception_id: br.id,
+              date_entree: dateReception,
+              statut: 'dispo',
+            })
+            if (uError) console.error('unites insert error:', uError)
           }
         }
       }
       router.push('/receptions')
     } catch (err) {
-      console.error(err); alert('Erreur lors de la création')
+      console.error(err); alert('Erreur lors de la création: ' + JSON.stringify(err))
     } finally { setLoading(false) }
   }
 
