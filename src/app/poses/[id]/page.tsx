@@ -44,6 +44,7 @@ export default function PoseDetailPage({ params }: { params: { id: string } }) {
             )}
             {pose.code_cee && <div className="flex justify-between"><dt className="text-gray-500">Code CEE</dt><dd className="font-medium">{pose.code_cee}</dd></div>}
             {pose.numero_dossier && <div className="flex justify-between"><dt className="text-gray-500">N° Dossier</dt><dd className="font-medium">{pose.numero_dossier}</dd></div>}
+            <div className="flex justify-between"><dt className="text-gray-500">Technicien</dt><dd className="font-medium">{pose.technicien}</dd></div>
             <div className="flex justify-between"><dt className="text-gray-500">Sous-traitant</dt><dd className="font-medium" style={{ color: st?.couleur }}>{st?.nom}</dd></div>
             {pose.notes && <div><dt className="text-gray-500 mb-1">Notes</dt><dd className="text-gray-800">{pose.notes}</dd></div>}
           </dl>

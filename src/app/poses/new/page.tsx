@@ -25,6 +25,7 @@ export default function NewPosePage() {
   const [adresseChantier, setAdresseChantier] = useState('')
   const [codeCee, setCodeCee] = useState('')
   const [numeroDossier, setNumeroDossier] = useState('')
+  const [technicien, setTechnicien] = useState('')
   const [datePose, setDatePose] = useState(new Date().toISOString().split('T')[0])
   const [sousTraitantId, setSousTraitantId] = useState('')
   const [notes, setNotes] = useState('')
@@ -89,6 +90,7 @@ export default function NewPosePage() {
         adresse_chantier: adresseChantier,
         code_cee: codeCee || null,
         numero_dossier: numeroDossier || null,
+        technicien,
         sous_traitant_id: sousTraitantId,
         notes: notes || null,
         signature_url: signatureUrl,
@@ -123,7 +125,7 @@ export default function NewPosePage() {
     } finally { setLoading(false) }
   }
 
-  const step1Valid = client && adresseChantier && datePose && sousTraitantId
+  const step1Valid = client && adresseChantier && technicien && datePose && sousTraitantId
   const step2Valid = selectedItems.length > 0
 
   return (
@@ -145,9 +147,7 @@ export default function NewPosePage() {
       </div>
 
       {errorMsg && (
-        <div className="bg-red-50 border border-red-200 rounded-lg p-3 text-xs text-red-700 font-mono break-all">
-          {errorMsg}
-        </div>
+        <div className="bg-red-50 border border-red-200 rounded-lg p-3 text-xs text-red-700 font-mono break-all">{errorMsg}</div>
       )}
 
       {step === 1 && (
@@ -176,18 +176,23 @@ export default function NewPosePage() {
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Technicien *</label>
+              <input value={technicien} onChange={(e) => setTechnicien(e.target.value)} placeholder="Nom du technicien"
+                className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-green-500" />
+            </div>
+            <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Date de pose *</label>
               <input type="date" value={datePose} onChange={(e) => setDatePose(e.target.value)}
                 className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-green-500" />
             </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Sous-traitant *</label>
-              <select value={sousTraitantId} onChange={(e) => handleSousTraitantChange(e.target.value)}
-                className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-green-500">
-                <option value="">Sélectionner...</option>
-                {sousTraitants.map((st) => <option key={st.id} value={st.id}>{st.nom}</option>)}
-              </select>
-            </div>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Sous-traitant *</label>
+            <select value={sousTraitantId} onChange={(e) => handleSousTraitantChange(e.target.value)}
+              className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-green-500">
+              <option value="">Sélectionner...</option>
+              {sousTraitants.map((st) => <option key={st.id} value={st.id}>{st.nom}</option>)}
+            </select>
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Notes</label>
@@ -248,6 +253,7 @@ export default function NewPosePage() {
               <p><strong>Chantier:</strong> {adresseChantier}</p>
               {codeCee && <p><strong>Code CEE:</strong> {codeCee}</p>}
               {numeroDossier && <p><strong>Dossier:</strong> {numeroDossier}</p>}
+              <p><strong>Technicien:</strong> {technicien}</p>
               <p><strong>Date de pose:</strong> {datePose}</p>
               <p><strong>Sous-traitant:</strong> {sousTraitants.find((s) => s.id === sousTraitantId)?.nom}</p>
               <p className="mt-2 font-medium">{selectedItems.length} article{selectedItems.length !== 1 ? 's' : ''} à poser:</p>
