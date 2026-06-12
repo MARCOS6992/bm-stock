@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { Suspense, useEffect, useState } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { Produit, SousTraitant } from '@/lib/types'
@@ -24,7 +24,7 @@ interface UnitRow {
   isPosed: boolean
 }
 
-export default function StockPage() {
+function StockContent() {
   const searchParams = useSearchParams()
   const router = useRouter()
   const stFilter = searchParams.get('st')
@@ -190,5 +190,13 @@ export default function StockPage() {
         </div>
       )}
     </div>
+  )
+}
+
+export default function StockPage() {
+  return (
+    <Suspense fallback={<div className="flex items-center justify-center h-64 text-gray-500">Chargement...</div>}>
+      <StockContent />
+    </Suspense>
   )
 }
