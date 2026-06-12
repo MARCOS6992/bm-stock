@@ -2,17 +2,20 @@
 
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
-import { Produit, SousTraitant } from '@/lib/types'
+import { Produit, SousTraitant, Distributeur } from '@/lib/types'
 import PageHeader from '@/components/PageHeader'
 
 const CATEGORIES = ['PAC Air/Eau', 'SSC', 'Ballon Électrique', 'Accessoire', 'Consommable']
 const UNITES = ['unité', 'ml', 'kg', 'm']
 const SERIE_CATS = ['PAC Air/Eau', 'SSC', 'Ballon Électrique']
 
+type Tab = 'produits' | 'sous_traitants' | 'distributeurs'
+
 export default function ParametresPage() {
   const [produits, setProduits] = useState<Produit[]>([])
   const [sousTraitants, setSousTraitants] = useState<SousTraitant[]>([])
-  const [activeTab, setActiveTab] = useState<'produits' | 'sous_traitants'>('produits')
+  const [distributeurs, setDistributeurs] = useState<Distributeur[]>([])
+  const [activeTab, setActiveTab] = useState<Tab>('produits')
   const [loading, setLoading] = useState(true)
 
   const [ref, setRef] = useState('')
@@ -26,15 +29,20 @@ export default function ParametresPage() {
   const [couleurST, setCouleurST] = useState('#3b82f6')
   const [showSTForm, setShowSTForm] = useState(false)
 
+  const [nomDist, setNomDist] = useState('')
+  const [showDistForm, setShowDistForm] = useState(false)
+
   useEffect(() => { loadData() }, [])
 
   async function loadData() {
-    const [{ data: p }, { data: s }] = await Promise.all([
+    const [{ data: p }, { data: s }, { data: d }] = await Promise.all([
       supabase.from('produits').select('*').order('designation'),
       supabase.from('sous_traitants').select('*').order('nom'),
+      supabase.from('distributeurs').select('*').order('nom'),
     ])
     if (p) setProduits(p)
     if (s) setSousTraitants(s)
+    if (d) setDistributeurs(d)
     setLoading(false)
   }
 
@@ -68,20 +76,35 @@ export default function ParametresPage() {
     loadData()
   }
 
+  async function addDistributeur() {
+    const { error } = await supabase.from('distributeurs').insert({ nom: nomDist })
+    if (error) { alert('Erreur: ' + error.message); return }
+    setNomDist(''); setShowDistForm(false)
+    loadData()
+  }
+
+  async function deleteDistributeur(id: string) {
+    if (!confirm('Supprimer ce distributeur ?')) return
+    await supabase.from('distributeurs').delete().eq('id', id)
+    loadData()
+  }
+
   if (loading) return <div className="flex items-center justify-center h-64 text-gray-500">Chargement...</div>
 
   return (
     <div>
       <PageHeader title="Paramètres" />
-      <div className="flex gap-2 mb-6">
-        <button onClick={() => setActiveTab('produits')}
-          className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-            activeTab === 'produits' ? 'bg-blue-600 text-white' : 'bg-white text-gray-700 border border-gray-200 hover:bg-gray-50'
-          }`}>Produits ({produits.length})</button>
-        <button onClick={() => setActiveTab('sous_traitants')}
-          className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-            activeTab === 'sous_traitants' ? 'bg-blue-600 text-white' : 'bg-white text-gray-700 border border-gray-200 hover:bg-gray-50'
-          }`}>Sous-traitants ({sousTraitants.length})</button>
+      <div className="flex gap-2 mb-6 flex-wrap">
+        {(['produits', 'sous_traitants', 'distributeurs'] as Tab[]).map((tab) => (
+          <button key={tab} onClick={() => setActiveTab(tab)}
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+              activeTab === tab ? 'bg-blue-600 text-white' : 'bg-white text-gray-700 border border-gray-200 hover:bg-gray-50'
+            }`}>
+            {tab === 'produits' ? `Produits (${produits.length})` :
+             tab === 'sous_traitants' ? `Sous-traitants (${sousTraitants.length})` :
+             `Distributeurs (${distributeurs.length})`}
+          </button>
+        ))}
       </div>
 
       {activeTab === 'produits' && (
@@ -193,6 +216,40 @@ export default function ParametresPage() {
               </div>
             ))}
             {sousTraitants.length === 0 && <div className="px-4 py-8 text-center text-gray-400 text-sm">Aucun sous-traitant</div>}
+          </div>
+        </div>
+      )}
+
+      {activeTab === 'distributeurs' && (
+        <div className="space-y-4">
+          <div className="flex justify-end">
+            <button onClick={() => setShowDistForm(!showDistForm)}
+              className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700">+ Ajouter</button>
+          </div>
+          {showDistForm && (
+            <div className="bg-white rounded-xl border border-gray-100 p-4 space-y-3">
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1">Nom du distributeur *</label>
+                <input value={nomDist} onChange={(e) => setNomDist(e.target.value)} placeholder="ex: Atlantic, Panasonic..."
+                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+              </div>
+              <div className="flex gap-2 justify-end">
+                <button onClick={() => setShowDistForm(false)}
+                  className="px-4 py-2 text-sm text-gray-600 border border-gray-200 rounded-lg hover:bg-gray-50">Annuler</button>
+                <button onClick={addDistributeur} disabled={!nomDist}
+                  className="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-40">Ajouter</button>
+              </div>
+            </div>
+          )}
+          <div className="bg-white rounded-xl shadow-sm border border-gray-100 divide-y divide-gray-100">
+            {distributeurs.map((d) => (
+              <div key={d.id} className="flex items-center justify-between px-4 py-3">
+                <span className="font-medium text-gray-900 text-sm">{d.nom}</span>
+                <button onClick={() => deleteDistributeur(d.id)}
+                  className="text-red-400 hover:text-red-600 text-xs px-2 py-1 rounded hover:bg-red-50">Supprimer</button>
+              </div>
+            ))}
+            {distributeurs.length === 0 && <div className="px-4 py-8 text-center text-gray-400 text-sm">Aucun distributeur. Ajoutez-en depuis ce menu.</div>}
           </div>
         </div>
       )}

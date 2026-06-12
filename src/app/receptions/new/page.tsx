@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
-import { SousTraitant, Produit } from '@/lib/types'
+import { SousTraitant, Produit, Distributeur } from '@/lib/types'
 import dynamic from 'next/dynamic'
 
 const SignatureCanvas = dynamic(() => import('@/components/SignatureCanvas'), { ssr: false })
@@ -20,9 +20,10 @@ export default function NewReceptionPage() {
   const [step, setStep] = useState(1)
   const [sousTraitants, setSousTraitants] = useState<SousTraitant[]>([])
   const [produits, setProduits] = useState<Produit[]>([])
+  const [distributeurs, setDistributeurs] = useState<Distributeur[]>([])
   const [loading, setLoading] = useState(false)
 
-  const [distributeur, setDistributeur] = useState('')
+  const [distributeurId, setDistributeurId] = useState('')
   const [blFournisseur, setBlFournisseur] = useState('')
   const [dateReception, setDateReception] = useState(new Date().toISOString().split('T')[0])
   const [receptionnePar, setReceptionnePar] = useState('')
@@ -39,11 +40,15 @@ export default function NewReceptionPage() {
     Promise.all([
       supabase.from('sous_traitants').select('*').order('nom'),
       supabase.from('produits').select('*').order('designation'),
-    ]).then(([{ data: sts }, { data: prods }]) => {
+      supabase.from('distributeurs').select('*').order('nom'),
+    ]).then(([{ data: sts }, { data: prods }, { data: dists }]) => {
       if (sts) setSousTraitants(sts)
       if (prods) setProduits(prods)
+      if (dists) setDistributeurs(dists)
     })
   }, [])
+
+  const distributeurNom = distributeurs.find((d) => d.id === distributeurId)?.nom || ''
 
   function addLigne() {
     const produit = produits.find((p) => p.id === selectedProduitId)
@@ -91,46 +96,49 @@ export default function NewReceptionPage() {
       const numero = `BR-${new Date().getFullYear()}-${String(seq).padStart(4, '0')}`
 
       const { data: br, error: brError } = await supabase.from('bons_reception').insert({
-        numero, distributeur, bl_fournisseur: blFournisseur, date_reception: dateReception,
-        receptionne_par: receptionnePar, sous_traitant_id: sousTraitantId, notes: notes || null, signature_url: signatureUrl,
+        numero,
+        distributeur: distributeurNom,
+        bl_fournisseur: blFournisseur,
+        date_reception: dateReception,
+        receptionne_par: receptionnePar,
+        sous_traitant_id: sousTraitantId,
+        notes: notes || null,
+        signature_url: signatureUrl,
       }).select().single()
 
       if (brError || !br) throw brError
 
       for (const ligne of lignes) {
-        const { error: lrError } = await supabase.from('lignes_reception').insert({
+        await supabase.from('lignes_reception').insert({
           bon_reception_id: br.id, reference_id: ligne.produit.id, qte: ligne.qte, series: ligne.series.filter(Boolean),
         })
-        if (lrError) console.error('lignes_reception error:', lrError)
 
         if (ligne.produit.necessite_serie) {
           for (const serie of ligne.series) {
             if (!serie) continue
-            const { error: uError } = await supabase.from('unites').insert({
+            await supabase.from('unites').insert({
               reference_id: ligne.produit.id,
               sous_traitant_id: sousTraitantId,
               numero_serie: serie,
-              fournisseur: distributeur,
+              fournisseur: distributeurNom,
               bl_fournisseur: blFournisseur,
               bon_reception_id: br.id,
               date_entree: dateReception,
               statut: 'dispo',
             })
-            if (uError) console.error('unites insert error:', uError)
           }
         } else {
           for (let j = 0; j < ligne.qte; j++) {
-            const { error: uError } = await supabase.from('unites').insert({
+            await supabase.from('unites').insert({
               reference_id: ligne.produit.id,
               sous_traitant_id: sousTraitantId,
               numero_serie: null,
-              fournisseur: distributeur,
+              fournisseur: distributeurNom,
               bl_fournisseur: blFournisseur,
               bon_reception_id: br.id,
               date_entree: dateReception,
               statut: 'dispo',
             })
-            if (uError) console.error('unites insert error:', uError)
           }
         }
       }
@@ -140,7 +148,7 @@ export default function NewReceptionPage() {
     } finally { setLoading(false) }
   }
 
-  const step1Valid = distributeur && blFournisseur && dateReception && receptionnePar && sousTraitantId
+  const step1Valid = distributeurId && blFournisseur && dateReception && receptionnePar && sousTraitantId
   const step2Valid = lignes.length > 0
   const seriesComplete = lignes.every((l) => !l.produit.necessite_serie || l.series.every((s) => s.trim() !== ''))
 
@@ -167,8 +175,14 @@ export default function NewReceptionPage() {
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Distributeur *</label>
-              <input value={distributeur} onChange={(e) => setDistributeur(e.target.value)} placeholder="Nom du distributeur"
-                className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+              <select value={distributeurId} onChange={(e) => setDistributeurId(e.target.value)}
+                className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                <option value="">Sélectionner...</option>
+                {distributeurs.map((d) => <option key={d.id} value={d.id}>{d.nom}</option>)}
+              </select>
+              {distributeurs.length === 0 && (
+                <p className="text-xs text-orange-500 mt-1">Aucun distributeur — <Link href="/parametres" className="underline">ajoutez-en dans Paramètres</Link></p>
+              )}
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">N° BL fournisseur *</label>
@@ -263,7 +277,7 @@ export default function NewReceptionPage() {
           <div className="bg-white rounded-xl border border-gray-100 p-6">
             <h3 className="font-semibold text-gray-900 mb-3">Récapitulatif</h3>
             <div className="text-sm text-gray-600 space-y-1 mb-4">
-              <p><strong>Distributeur:</strong> {distributeur}</p>
+              <p><strong>Distributeur:</strong> {distributeurNom}</p>
               <p><strong>N° BL:</strong> {blFournisseur}</p>
               <p><strong>Date:</strong> {dateReception}</p>
               <p><strong>Réceptionné par:</strong> {receptionnePar}</p>

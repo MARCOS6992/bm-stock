@@ -16,12 +16,22 @@ export interface Produit {
   created_at: string
 }
 
+export interface Distributeur {
+  id: string
+  nom: string
+  created_at: string
+}
+
 export interface StockUnit {
   id: string
   reference_id: string
   sous_traitant_id: string
   numero_serie: string | null
   fournisseur: string | null
+  bl_fournisseur: string | null
+  bon_reception_id: string | null
+  date_entree: string | null
+  statut: string
   produit?: Produit
   sous_traitant?: SousTraitant
 }
