@@ -2,207 +2,200 @@
 
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
-import { SousTraitant, Produit } from '@/lib/types'
+import { Produit, SousTraitant } from '@/lib/types'
 import PageHeader from '@/components/PageHeader'
 
-const CATEGORIES = ['PAC Air/Eau', 'SSC', 'Ballon Électrique', 'Kit Outillage', 'Accessoires']
-const UNITES = ['unité', 'pièce', 'kit', 'm', 'ml', 'lot']
-
-const PRESET_COLORS = [
-  '#EF4444', '#F97316', '#EAB308', '#22C55E', '#14B8A6',
-  '#3B82F6', '#8B5CF6', '#EC4899', '#6B7280', '#1D4ED8',
-]
+const CATEGORIES = ['PAC Air/Eau', 'SSC', 'Ballon Électrique', 'Accessoire', 'Consommable']
+const UNITES = ['unité', 'ml', 'kg', 'm']
+const SERIE_CATS = ['PAC Air/Eau', 'SSC', 'Ballon Électrique']
 
 export default function ParametresPage() {
-  const [sousTraitants, setSousTraitants] = useState<SousTraitant[]>([])
-  const [newNom, setNewNom] = useState('')
-  const [newCouleur, setNewCouleur] = useState('#3B82F6')
-  const [savingST, setSavingST] = useState(false)
-
   const [produits, setProduits] = useState<Produit[]>([])
-  const [newRef, setNewRef] = useState('')
-  const [newDesignation, setNewDesignation] = useState('')
-  const [newCat, setNewCat] = useState('PAC Air/Eau')
-  const [newUnite, setNewUnite] = useState('unité')
-  const [newSeuil, setNewSeuil] = useState(0)
-  const [savingProd, setSavingProd] = useState(false)
+  const [sousTraitants, setSousTraitants] = useState<SousTraitant[]>([])
+  const [activeTab, setActiveTab] = useState<'produits' | 'sous_traitants'>('produits')
+  const [loading, setLoading] = useState(true)
+
+  const [ref, setRef] = useState('')
+  const [designation, setDesignation] = useState('')
+  const [categorie, setCategorie] = useState(CATEGORIES[0])
+  const [unite, setUnite] = useState(UNITES[0])
+  const [seuilMin, setSeuilMin] = useState('0')
+  const [showProduitForm, setShowProduitForm] = useState(false)
+
+  const [nomST, setNomST] = useState('')
+  const [couleurST, setCouleurST] = useState('#3b82f6')
+  const [showSTForm, setShowSTForm] = useState(false)
 
   useEffect(() => { loadData() }, [])
 
   async function loadData() {
-    const [{ data: sts }, { data: prods }] = await Promise.all([
+    const [{ data: p }, { data: s }] = await Promise.all([
+      supabase.from('produits').select('*').order('designation'),
       supabase.from('sous_traitants').select('*').order('nom'),
-      supabase.from('produits').select('*').order('categorie,designation'),
     ])
-    if (sts) setSousTraitants(sts)
-    if (prods) setProduits(prods)
-  }
-
-  async function addSousTraitant() {
-    if (!newNom.trim()) return
-    setSavingST(true)
-    const { error } = await supabase.from('sous_traitants').insert({ nom: newNom.trim(), couleur: newCouleur })
-    if (!error) { setNewNom(''); setNewCouleur('#3B82F6'); await loadData() }
-    else alert('Erreur: ' + error.message)
-    setSavingST(false)
-  }
-
-  async function deleteSousTraitant(id: string) {
-    if (!confirm('Supprimer ce sous-traitant ? Cette action est irréversible.')) return
-    const { error } = await supabase.from('sous_traitants').delete().eq('id', id)
-    if (!error) await loadData()
-    else alert('Impossible de supprimer: ' + error.message)
+    if (p) setProduits(p)
+    if (s) setSousTraitants(s)
+    setLoading(false)
   }
 
   async function addProduit() {
-    if (!newRef.trim() || !newDesignation.trim()) return
-    setSavingProd(true)
     const { error } = await supabase.from('produits').insert({
-      ref: newRef.trim().toUpperCase(),
-      designation: newDesignation.trim(),
-      categorie: newCat,
-      unite: newUnite,
-      seuil_min: newSeuil,
+      ref, designation, categorie, unite,
+      seuil_min: parseInt(seuilMin) || 0,
+      necessite_serie: SERIE_CATS.includes(categorie),
     })
-    if (!error) {
-      setNewRef(''); setNewDesignation(''); setNewCat('PAC Air/Eau'); setNewUnite('unité'); setNewSeuil(0)
-      await loadData()
-    } else alert('Erreur: ' + error.message)
-    setSavingProd(false)
+    if (error) { alert('Erreur: ' + error.message); return }
+    setRef(''); setDesignation(''); setSeuilMin('0'); setShowProduitForm(false)
+    loadData()
   }
 
   async function deleteProduit(id: string) {
-    if (!confirm('Supprimer ce produit ? Cette action est irréversible.')) return
-    const { error } = await supabase.from('produits').delete().eq('id', id)
-    if (!error) await loadData()
-    else alert('Impossible de supprimer: ' + error.message)
+    if (!confirm('Supprimer ce produit ?')) return
+    await supabase.from('produits').delete().eq('id', id)
+    loadData()
   }
 
-  const produitsByCategory = CATEGORIES.reduce<Record<string, Produit[]>>((acc, cat) => {
-    acc[cat] = produits.filter((p) => p.categorie === cat)
-    return acc
-  }, {})
+  async function addSousTraitant() {
+    const { error } = await supabase.from('sous_traitants').insert({ nom: nomST, couleur: couleurST })
+    if (error) { alert('Erreur: ' + error.message); return }
+    setNomST(''); setShowSTForm(false)
+    loadData()
+  }
+
+  async function deleteSousTraitant(id: string) {
+    if (!confirm('Supprimer ce sous-traitant ?')) return
+    await supabase.from('sous_traitants').delete().eq('id', id)
+    loadData()
+  }
+
+  if (loading) return <div className="flex items-center justify-center h-64 text-gray-500">Chargement...</div>
 
   return (
-    <div className="space-y-10">
-      <PageHeader title="Paramètres" subtitle="Gérer les sous-traitants et les produits" />
+    <div>
+      <PageHeader title="Paramètres" />
+      <div className="flex gap-2 mb-6">
+        <button onClick={() => setActiveTab('produits')}
+          className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+            activeTab === 'produits' ? 'bg-blue-600 text-white' : 'bg-white text-gray-700 border border-gray-200 hover:bg-gray-50'
+          }`}>Produits ({produits.length})</button>
+        <button onClick={() => setActiveTab('sous_traitants')}
+          className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+            activeTab === 'sous_traitants' ? 'bg-blue-600 text-white' : 'bg-white text-gray-700 border border-gray-200 hover:bg-gray-50'
+          }`}>Sous-traitants ({sousTraitants.length})</button>
+      </div>
 
-      <section>
-        <h2 className="text-lg font-bold text-gray-800 mb-4">Sous-traitants</h2>
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 divide-y divide-gray-100 mb-4">
-          {sousTraitants.length === 0 ? (
-            <p className="p-4 text-gray-400 text-sm">Aucun sous-traitant</p>
-          ) : (
-            sousTraitants.map((st) => (
+      {activeTab === 'produits' && (
+        <div className="space-y-4">
+          <div className="flex justify-end">
+            <button onClick={() => setShowProduitForm(!showProduitForm)}
+              className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700">+ Ajouter un produit</button>
+          </div>
+          {showProduitForm && (
+            <div className="bg-white rounded-xl border border-gray-100 p-4 space-y-3">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">Référence *</label>
+                  <input value={ref} onChange={(e) => setRef(e.target.value)} placeholder="ex: PAC-001"
+                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">Désignation *</label>
+                  <input value={designation} onChange={(e) => setDesignation(e.target.value)} placeholder="Nom du produit"
+                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                </div>
+              </div>
+              <div className="grid grid-cols-3 gap-3">
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">Catégorie</label>
+                  <select value={categorie} onChange={(e) => setCategorie(e.target.value)}
+                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    {CATEGORIES.map((c) => <option key={c}>{c}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">Unité</label>
+                  <select value={unite} onChange={(e) => setUnite(e.target.value)}
+                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    {UNITES.map((u) => <option key={u}>{u}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">Seuil min</label>
+                  <input type="number" value={seuilMin} onChange={(e) => setSeuilMin(e.target.value)} min="0"
+                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                </div>
+              </div>
+              <div className="flex gap-2 justify-end">
+                <button onClick={() => setShowProduitForm(false)}
+                  className="px-4 py-2 text-sm text-gray-600 border border-gray-200 rounded-lg hover:bg-gray-50">Annuler</button>
+                <button onClick={addProduit} disabled={!ref || !designation}
+                  className="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-40">Ajouter</button>
+              </div>
+            </div>
+          )}
+          <div className="bg-white rounded-xl shadow-sm border border-gray-100 divide-y divide-gray-100">
+            {produits.map((p) => (
+              <div key={p.id} className="flex items-center justify-between px-4 py-3">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="font-medium text-gray-900 text-sm">{p.designation}</span>
+                    <span className="text-xs text-gray-400 font-mono">{p.ref}</span>
+                    {p.necessite_serie && <span className="text-xs bg-orange-100 text-orange-700 px-1.5 py-0.5 rounded">N° série</span>}
+                  </div>
+                  <div className="text-xs text-gray-400">{p.categorie} · {p.unite} · min {p.seuil_min}</div>
+                </div>
+                <button onClick={() => deleteProduit(p.id)}
+                  className="text-red-400 hover:text-red-600 text-xs px-2 py-1 rounded hover:bg-red-50">Supprimer</button>
+              </div>
+            ))}
+            {produits.length === 0 && <div className="px-4 py-8 text-center text-gray-400 text-sm">Aucun produit</div>}
+          </div>
+        </div>
+      )}
+
+      {activeTab === 'sous_traitants' && (
+        <div className="space-y-4">
+          <div className="flex justify-end">
+            <button onClick={() => setShowSTForm(!showSTForm)}
+              className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700">+ Ajouter</button>
+          </div>
+          {showSTForm && (
+            <div className="bg-white rounded-xl border border-gray-100 p-4 space-y-3">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">Nom *</label>
+                  <input value={nomST} onChange={(e) => setNomST(e.target.value)} placeholder="Nom"
+                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">Couleur</label>
+                  <input type="color" value={couleurST} onChange={(e) => setCouleurST(e.target.value)}
+                    className="w-full h-10 border border-gray-200 rounded-lg cursor-pointer" />
+                </div>
+              </div>
+              <div className="flex gap-2 justify-end">
+                <button onClick={() => setShowSTForm(false)}
+                  className="px-4 py-2 text-sm text-gray-600 border border-gray-200 rounded-lg hover:bg-gray-50">Annuler</button>
+                <button onClick={addSousTraitant} disabled={!nomST}
+                  className="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-40">Ajouter</button>
+              </div>
+            </div>
+          )}
+          <div className="bg-white rounded-xl shadow-sm border border-gray-100 divide-y divide-gray-100">
+            {sousTraitants.map((st) => (
               <div key={st.id} className="flex items-center justify-between px-4 py-3">
                 <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-full border-2 border-white shadow" style={{ backgroundColor: st.couleur }} />
-                  <span className="font-medium text-gray-900">{st.nom}</span>
-                  <span className="text-xs text-gray-400 font-mono">{st.couleur}</span>
+                  <div className="w-4 h-4 rounded-full" style={{ backgroundColor: st.couleur }} />
+                  <span className="font-medium text-gray-900 text-sm">{st.nom}</span>
                 </div>
-                <button onClick={() => deleteSousTraitant(st.id)} className="text-red-400 hover:text-red-600 text-sm px-3 py-1 rounded hover:bg-red-50 transition-colors">Supprimer</button>
+                <button onClick={() => deleteSousTraitant(st.id)}
+                  className="text-red-400 hover:text-red-600 text-xs px-2 py-1 rounded hover:bg-red-50">Supprimer</button>
               </div>
-            ))
-          )}
-        </div>
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4">
-          <h3 className="font-medium text-gray-700 mb-3">Ajouter un sous-traitant</h3>
-          <div className="flex flex-col sm:flex-row gap-3">
-            <input value={newNom} onChange={(e) => setNewNom(e.target.value)} placeholder="Nom du sous-traitant"
-              className="flex-1 border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
-            <div className="flex items-center gap-2">
-              <label className="text-xs text-gray-500">Couleur:</label>
-              <input type="color" value={newCouleur} onChange={(e) => setNewCouleur(e.target.value)}
-                className="w-10 h-10 rounded cursor-pointer border border-gray-200" />
-            </div>
-          </div>
-          <div className="flex gap-2 mt-2">
-            {PRESET_COLORS.map((c) => (
-              <button key={c} onClick={() => setNewCouleur(c)}
-                className={`w-6 h-6 rounded-full border-2 transition-transform hover:scale-110 ${newCouleur === c ? 'border-gray-900 scale-110' : 'border-transparent'}`}
-                style={{ backgroundColor: c }} title={c} />
             ))}
+            {sousTraitants.length === 0 && <div className="px-4 py-8 text-center text-gray-400 text-sm">Aucun sous-traitant</div>}
           </div>
-          <button onClick={addSousTraitant} disabled={!newNom.trim() || savingST}
-            className="mt-3 w-full bg-blue-600 text-white py-2.5 rounded-lg text-sm font-medium disabled:opacity-40 hover:bg-blue-700 transition-colors">
-            {savingST ? 'Enregistrement...' : '+ Ajouter'}
-          </button>
         </div>
-      </section>
-
-      <section>
-        <h2 className="text-lg font-bold text-gray-800 mb-4">Produits</h2>
-        <div className="space-y-4 mb-4">
-          {CATEGORIES.map((cat) => {
-            const catProds = produitsByCategory[cat]
-            if (!catProds || catProds.length === 0) return null
-            return (
-              <div key={cat} className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-                <div className="px-4 py-2 bg-gray-50 border-b border-gray-100">
-                  <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">{cat}</span>
-                </div>
-                <div className="divide-y divide-gray-50">
-                  {catProds.map((p) => (
-                    <div key={p.id} className="flex items-center justify-between px-4 py-3">
-                      <div>
-                        <span className="font-medium text-gray-900 text-sm">{p.designation}</span>
-                        <div className="flex gap-3 mt-0.5 text-xs text-gray-400">
-                          <span className="font-mono">{p.ref}</span>
-                          <span>{p.unite}</span>
-                          <span>Seuil: {p.seuil_min || 0}</span>
-                        </div>
-                      </div>
-                      <button onClick={() => deleteProduit(p.id)} className="text-red-400 hover:text-red-600 text-sm px-3 py-1 rounded hover:bg-red-50 transition-colors">Supprimer</button>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )
-          })}
-          {produits.length === 0 && (
-            <div className="bg-white rounded-xl border border-gray-100 p-8 text-center text-gray-400">Aucun produit enregistré</div>
-          )}
-        </div>
-
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4">
-          <h3 className="font-medium text-gray-700 mb-3">Ajouter un produit</h3>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">Référence *</label>
-              <input value={newRef} onChange={(e) => setNewRef(e.target.value)} placeholder="ex: PAC-001"
-                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">Désignation *</label>
-              <input value={newDesignation} onChange={(e) => setNewDesignation(e.target.value)} placeholder="Nom du produit"
-                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">Catégorie</label>
-              <select value={newCat} onChange={(e) => setNewCat(e.target.value)}
-                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
-                {CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
-              </select>
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">Unité</label>
-              <select value={newUnite} onChange={(e) => setNewUnite(e.target.value)}
-                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
-                {UNITES.map((u) => <option key={u} value={u}>{u}</option>)}
-              </select>
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">Seuil minimum</label>
-              <input type="number" min="0" value={newSeuil} onChange={(e) => setNewSeuil(parseInt(e.target.value) || 0)}
-                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
-            </div>
-          </div>
-          <button onClick={addProduit} disabled={!newRef.trim() || !newDesignation.trim() || savingProd}
-            className="mt-4 w-full bg-blue-600 text-white py-2.5 rounded-lg text-sm font-medium disabled:opacity-40 hover:bg-blue-700 transition-colors">
-            {savingProd ? 'Enregistrement...' : '+ Ajouter le produit'}
-          </button>
-        </div>
-      </section>
+      )}
     </div>
   )
 }

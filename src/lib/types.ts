@@ -1,5 +1,3 @@
-export type StatutStockItem = 'en_stock' | 'pose' | 'perdu'
-
 export interface SousTraitant {
   id: string
   nom: string
@@ -14,20 +12,16 @@ export interface Produit {
   categorie: string
   unite: string
   seuil_min: number
+  necessite_serie: boolean
   created_at: string
 }
 
-export interface StockItem {
+export interface StockUnit {
   id: string
-  produit_id: string
+  reference_id: string
   sous_traitant_id: string
   numero_serie: string | null
-  statut: StatutStockItem
   fournisseur: string | null
-  numero_bl_fournisseur: string | null
-  bon_reception_id: string | null
-  date_entree: string | null
-  created_at: string
   produit?: Produit
   sous_traitant?: SousTraitant
 }
@@ -35,24 +29,23 @@ export interface StockItem {
 export interface BonReception {
   id: string
   numero: string
-  fournisseur: string
-  numero_bl_fournisseur: string
-  date_bl: string
+  distributeur: string
+  bl_fournisseur: string
+  date_reception: string
   sous_traitant_id: string
-  technicien: string
-  statut: string
+  receptionne_par: string
+  notes: string | null
   signature_url: string | null
   created_at: string
   sous_traitant?: SousTraitant
 }
 
-export interface BonReceptionItem {
+export interface LigneReception {
   id: string
   bon_reception_id: string
-  produit_id: string
-  quantite: number
-  numeros_serie: string[]
-  created_at: string
+  reference_id: string
+  qte: number
+  series: string[]
   produit?: Produit
 }
 
@@ -63,22 +56,21 @@ export interface BonPose {
   adresse_chantier: string
   code_cee: string | null
   numero_dossier: string | null
+  technicion: string
   sous_traitant_id: string
-  technicien: string
-  statut: string
+  notes: string | null
   signature_url: string | null
-  date_pose: string | null
   created_at: string
   sous_traitant?: SousTraitant
 }
 
-export interface BonPoseItem {
+export interface LignePose {
   id: string
   bon_pose_id: string
-  stock_item_id: string
-  produit_id: string
+  unite_id: string
+  ref: string
+  designation: string
   numero_serie: string | null
-  created_at: string
-  produit?: Produit
-  stock_item?: StockItem
+  fournisseur: string | null
+  bl_fournisseur: string | null
 }
