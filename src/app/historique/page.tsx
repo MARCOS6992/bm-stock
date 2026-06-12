@@ -9,17 +9,17 @@ import { fr } from 'date-fns/locale'
 interface HistoriqueRow {
   id: string
   client: string
-  reference_produit: string
-  nom_produit: string
+  ref: string
+  designation: string
   numero_serie: string | null
-  technicien: string
+  technicion: string
   sous_traitant: string
   couleur_st: string
   numero_bon_pose: string
   fournisseur: string | null
-  numero_bl_fournisseur: string | null
+  bl_fournisseur: string | null
   code_cee: string | null
-  date_pose: string | null
+  date: string
 }
 
 export default function HistoriquePage() {
@@ -33,44 +33,42 @@ export default function HistoriquePage() {
 
   async function loadData() {
     const { data, error } = await supabase
-      .from('bons_pose_items')
+      .from('lignes_pose')
       .select(`
         id,
+        ref,
+        designation,
         numero_serie,
+        fournisseur,
+        bl_fournisseur,
         bon_pose:bons_pose(
           numero,
           client,
           code_cee,
-          technicien,
-          date_pose,
+          technicion,
+          created_at,
           sous_traitant:sous_traitants(nom, couleur)
-        ),
-        produit:produits(reference, nom),
-        stock_item:stock_items(fournisseur, numero_bl_fournisseur)
+        )
       `)
-      .order('created_at', { ascending: false })
+      .order('id', { ascending: false })
 
-    if (error) {
-      console.error(error)
-      setLoading(false)
-      return
-    }
+    if (error) { console.error(error); setLoading(false); return }
 
     if (data) {
       const mapped: HistoriqueRow[] = data.map((item: any) => ({
         id: item.id,
         client: item.bon_pose?.client || '',
-        reference_produit: item.produit?.reference || '',
-        nom_produit: item.produit?.nom || '',
+        ref: item.ref || '',
+        designation: item.designation || '',
         numero_serie: item.numero_serie,
-        technicien: item.bon_pose?.technicien || '',
+        technicion: item.bon_pose?.technicion || '',
         sous_traitant: item.bon_pose?.sous_traitant?.nom || '',
         couleur_st: item.bon_pose?.sous_traitant?.couleur || '#6b7280',
         numero_bon_pose: item.bon_pose?.numero || '',
-        fournisseur: item.stock_item?.fournisseur || null,
-        numero_bl_fournisseur: item.stock_item?.numero_bl_fournisseur || null,
+        fournisseur: item.fournisseur || null,
+        bl_fournisseur: item.bl_fournisseur || null,
         code_cee: item.bon_pose?.code_cee || null,
-        date_pose: item.bon_pose?.date_pose || null,
+        date: item.bon_pose?.created_at || '',
       }))
       setRows(mapped)
     }
@@ -82,26 +80,19 @@ export default function HistoriquePage() {
         const q = search.toLowerCase()
         return (
           r.client.toLowerCase().includes(q) ||
-          r.reference_produit.toLowerCase().includes(q) ||
-          r.nom_produit.toLowerCase().includes(q) ||
+          r.ref.toLowerCase().includes(q) ||
+          r.designation.toLowerCase().includes(q) ||
           (r.numero_serie || '').toLowerCase().includes(q) ||
-          r.technicien.toLowerCase().includes(q) ||
+          r.technicion.toLowerCase().includes(q) ||
           r.sous_traitant.toLowerCase().includes(q) ||
           r.numero_bon_pose.toLowerCase().includes(q) ||
           (r.fournisseur || '').toLowerCase().includes(q) ||
-          (r.numero_bl_fournisseur || '').toLowerCase().includes(q) ||
           (r.code_cee || '').toLowerCase().includes(q)
         )
       })
     : rows
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64 text-gray-500">
-        Chargement...
-      </div>
-    )
-  }
+  if (loading) return <div className="flex items-center justify-center h-64 text-gray-500">Chargement...</div>
 
   return (
     <div>
@@ -141,9 +132,8 @@ export default function HistoriquePage() {
                 <th className="px-4 py-3 text-left font-semibold">Technicien</th>
                 <th className="px-4 py-3 text-left font-semibold">Sous-traitant</th>
                 <th className="px-4 py-3 text-left font-semibold">Fournisseur</th>
-                <th className="px-4 py-3 text-left font-semibold">N° BL</th>
                 <th className="px-4 py-3 text-left font-semibold">Code CEE</th>
-                <th className="px-4 py-3 text-left font-semibold">Date pose</th>
+                <th className="px-4 py-3 text-left font-semibold">Date</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
@@ -152,13 +142,13 @@ export default function HistoriquePage() {
                   <td className="px-4 py-3 font-mono text-xs text-blue-600">{row.numero_bon_pose}</td>
                   <td className="px-4 py-3 font-medium text-gray-900">{row.client}</td>
                   <td className="px-4 py-3">
-                    <div className="font-medium text-gray-900 text-xs">{row.nom_produit}</div>
-                    <div className="text-gray-400 font-mono text-xs">{row.reference_produit}</div>
+                    <div className="font-medium text-gray-900 text-xs">{row.designation}</div>
+                    <div className="text-gray-400 font-mono text-xs">{row.ref}</div>
                   </td>
                   <td className="px-4 py-3 font-mono text-xs text-gray-600">
                     {row.numero_serie || <span className="text-gray-300">—</span>}
                   </td>
-                  <td className="px-4 py-3 text-gray-700">{row.technicien}</td>
+                  <td className="px-4 py-3 text-gray-700">{row.technicion}</td>
                   <td className="px-4 py-3">
                     {row.sous_traitant && (
                       <span
@@ -172,15 +162,12 @@ export default function HistoriquePage() {
                   <td className="px-4 py-3 text-gray-600 text-xs">
                     {row.fournisseur || <span className="text-gray-300">—</span>}
                   </td>
-                  <td className="px-4 py-3 font-mono text-xs text-gray-600">
-                    {row.numero_bl_fournisseur || <span className="text-gray-300">—</span>}
-                  </td>
                   <td className="px-4 py-3 text-xs text-gray-600">
                     {row.code_cee || <span className="text-gray-300">—</span>}
                   </td>
                   <td className="px-4 py-3 text-xs text-gray-500">
-                    {row.date_pose
-                      ? format(new Date(row.date_pose), 'dd/MM/yyyy', { locale: fr })
+                    {row.date
+                      ? format(new Date(row.date), 'dd/MM/yyyy', { locale: fr })
                       : <span className="text-gray-300">—</span>}
                   </td>
                 </tr>

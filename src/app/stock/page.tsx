@@ -1,21 +1,20 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
-import { SousTraitant, Produit, StockItem } from '@/lib/types'
+import { Produit, SousTraitant } from '@/lib/types'
 import PageHeader from '@/components/PageHeader'
 
 interface StockRow {
   produit: Produit
-  bySubcontractor: Record<string, number>
+  sousTraitant: SousTraitant
   total: number
+  disponible: number
+  pose: number
 }
 
 export default function StockPage() {
   const [rows, setRows] = useState<StockRow[]>([])
-  const [sousTraitants, setSousTraitants] = useState<SousTraitant[]>([])
-  const [filterCategorie, setFilterCategorie] = useState('')
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -23,98 +22,102 @@ export default function StockPage() {
   }, [])
 
   async function loadData() {
-    const { data: sts } = await supabase.from('sous_traitants').select('*').order('nom')
-    const { data: produits } = await supabase.from('produits').select('*').order('reference')
-    const { data: items } = await supabase
-      .from('stock_items')
-      .select('*')
-      .eq('statut', 'en_stock')
+    // Get all stock units with product and sous-traitant info
+    const { data: units } = await supabase
+      .from('stock')
+      .select('*, produit:produits(*), sous_traitant:sous_traitants(*)')
 
-    if (sts) setSousTraitants(sts)
+    // Get all posed unit IDs
+    const { data: posedItems } = await supabase
+      .from('lignes_pose')
+      .select('unite_id')
 
-    if (produits && items && sts) {
-      const rowData: StockRow[] = produits.map((p) => {
-        const bySubcontractor: Record<string, number> = {}
-        for (const st of sts) {
-          bySubcontractor[st.id] = items.filter(
-            (i: StockItem) => i.produit_id === p.id && i.sous_traitant_id === st.id
-          ).length
+    if (!units) { setLoading(false); return }
+
+    const posedIds = new Set((posedItems || []).map((lp: any) => lp.unite_id))
+
+    // Group by produit + sous_traitant
+    const groupMap: Record<string, StockRow> = {}
+    for (const u of units as any[]) {
+      if (!u.produit || !u.sous_traitant) continue
+      const key = `${u.reference_id}-${u.sous_traitant_id}`
+      if (!groupMap[key]) {
+        groupMap[key] = {
+          produit: u.produit,
+          sousTraitant: u.sous_traitant,
+          total: 0,
+          disponible: 0,
+          pose: 0,
         }
-        const total = items.filter((i: StockItem) => i.produit_id === p.id).length
-        return { produit: p, bySubcontractor, total }
-      })
-      setRows(rowData)
+      }
+      groupMap[key].total++
+      if (posedIds.has(u.id)) {
+        groupMap[key].pose++
+      } else {
+        groupMap[key].disponible++
+      }
     }
+
+    setRows(Object.values(groupMap).sort((a, b) => a.produit.designation.localeCompare(b.produit.designation)))
     setLoading(false)
   }
-
-  const categories = ['PAC_AIR_EAU', 'SSC', 'BALLON_ELEC', 'KIT_OUTILLAGE', 'ACCESSOIRE']
-  const filteredRows = filterCategorie
-    ? rows.filter((r) => r.produit.categorie === filterCategorie)
-    : rows
 
   if (loading) return <div className="flex items-center justify-center h-64 text-gray-500">Chargement...</div>
 
   return (
     <div>
-      <PageHeader title="Stock global" subtitle="Vue d'ensemble par sous-traitant" />
+      <PageHeader
+        title="Stock"
+        subtitle={`${rows.length} ligne${rows.length !== 1 ? 's' : ''}`}
+      />
 
-      <div className="mb-4">
-        <select
-          value={filterCategorie}
-          onChange={(e) => setFilterCategorie(e.target.value)}
-          className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-        >
-          <option value="">Toutes les catégories</option>
-          {categories.map((c) => (
-            <option key={c} value={c}>{c.replace(/_/g, ' ')}</option>
-          ))}
-        </select>
-      </div>
-
-      <div className="overflow-x-auto bg-white rounded-xl shadow-sm border border-gray-100">
-        <table className="min-w-full text-sm">
-          <thead>
-            <tr className="bg-gray-50 border-b border-gray-200">
-              <th className="text-left px-4 py-3 font-semibold text-gray-700">Référence</th>
-              <th className="text-left px-4 py-3 font-semibold text-gray-700">Produit</th>
-              {sousTraitants.map((st) => (
-                <th key={st.id} className="text-center px-4 py-3 font-semibold" style={{ color: st.couleur }}>
-                  {st.nom}
-                </th>
-              ))}
-              <th className="text-center px-4 py-3 font-semibold text-gray-700">Total</th>
-              <th className="text-center px-4 py-3 font-semibold text-gray-700">Seuil</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-100">
-            {filteredRows.map((row) => {
-              const belowThreshold = row.total <= row.produit.seuil_min
-              return (
-                <tr key={row.produit.id} className={belowThreshold ? 'bg-yellow-50' : 'hover:bg-gray-50'}>
-                  <td className="px-4 py-3 font-mono text-xs text-gray-600">{row.produit.reference}</td>
-                  <td className="px-4 py-3 font-medium text-gray-900">
-                    {row.produit.nom}
-                    {belowThreshold && <span className="ml-2 text-yellow-500 text-xs">⚠ Stock bas</span>}
+      {rows.length === 0 ? (
+        <div className="bg-white rounded-xl p-8 text-center text-gray-400 shadow-sm border border-gray-100">
+          Aucun article en stock
+        </div>
+      ) : (
+        <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-x-auto">
+          <table className="min-w-full text-sm">
+            <thead>
+              <tr className="bg-gray-50 border-b border-gray-200 text-xs text-gray-500 uppercase">
+                <th className="px-4 py-3 text-left font-semibold">Produit</th>
+                <th className="px-4 py-3 text-left font-semibold">Sous-traitant</th>
+                <th className="px-4 py-3 text-center font-semibold">Total</th>
+                <th className="px-4 py-3 text-center font-semibold">Disponible</th>
+                <th className="px-4 py-3 text-center font-semibold">Posé</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-100">
+              {rows.map((row, i) => (
+                <tr key={i} className="hover:bg-gray-50">
+                  <td className="px-4 py-3">
+                    <div className="font-medium text-gray-900">{row.produit.designation}</div>
+                    <div className="text-xs text-gray-400 font-mono">{row.produit.ref}</div>
                   </td>
-                  {sousTraitants.map((st) => (
-                    <td key={st.id} className="px-4 py-3 text-center">
-                      <Link
-                        href={`/stock/${st.id}`}
-                        className="text-gray-900 hover:text-blue-600 font-medium"
-                      >
-                        {row.bySubcontractor[st.id] || 0}
-                      </Link>
-                    </td>
-                  ))}
-                  <td className="px-4 py-3 text-center font-bold text-gray-900">{row.total}</td>
-                  <td className="px-4 py-3 text-center text-gray-500">{row.produit.seuil_min}</td>
+                  <td className="px-4 py-3">
+                    <span
+                      className="inline-block px-2 py-0.5 rounded text-white text-xs font-medium"
+                      style={{ backgroundColor: row.sousTraitant.couleur }}
+                    >
+                      {row.sousTraitant.nom}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3 text-center font-semibold">{row.total}</td>
+                  <td className="px-4 py-3 text-center">
+                    <span className={`font-semibold ${
+                      row.disponible === 0 ? 'text-red-500' :
+                      row.disponible <= row.produit.seuil_min ? 'text-orange-500' : 'text-green-600'
+                    }`}>
+                      {row.disponible}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3 text-center text-gray-500">{row.pose}</td>
                 </tr>
-              )
-            })}
-          </tbody>
-        </table>
-      </div>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
     </div>
   )
 }

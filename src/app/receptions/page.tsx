@@ -9,7 +9,7 @@ import { format } from 'date-fns'
 import { fr } from 'date-fns/locale'
 
 export default function ReceptionsPage() {
-  const [receptions, setReceptions] = useState<BonReception[]>([])
+  const [bons, setBons] = useState<BonReception[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -21,13 +21,8 @@ export default function ReceptionsPage() {
       .from('bons_reception')
       .select('*, sous_traitant:sous_traitants(*)')
       .order('created_at', { ascending: false })
-    if (data) setReceptions(data)
+    if (data) setBons(data)
     setLoading(false)
-  }
-
-  const statutColor: Record<string, string> = {
-    brouillon: 'bg-gray-100 text-gray-700',
-    finalise: 'bg-green-100 text-green-700',
   }
 
   if (loading) return <div className="flex items-center justify-center h-64 text-gray-500">Chargement...</div>
@@ -46,32 +41,36 @@ export default function ReceptionsPage() {
         }
       />
 
-      {receptions.length === 0 ? (
+      {bons.length === 0 ? (
         <div className="bg-white rounded-xl p-8 text-center text-gray-500 shadow-sm border border-gray-100">
-          Aucun bon de réception. <Link href="/receptions/new" className="text-blue-600 hover:underline">Créer le premier</Link>
+          Aucun bon de réception.{' '}
+          <Link href="/receptions/new" className="text-blue-600 hover:underline">Créer le premier</Link>
         </div>
       ) : (
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 divide-y divide-gray-100">
-          {receptions.map((r) => (
+          {bons.map((b) => (
             <Link
-              key={r.id}
-              href={`/receptions/${r.id}`}
+              key={b.id}
+              href={`/receptions/${b.id}`}
               className="flex items-center justify-between px-4 py-4 hover:bg-gray-50 transition-colors"
             >
               <div>
                 <div className="flex items-center gap-2">
-                  <span className="font-semibold text-gray-900">{r.numero}</span>
-                  <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${statutColor[r.statut] || 'bg-gray-100 text-gray-700'}`}>
-                    {r.statut === 'finalise' ? 'Finalisé' : 'Brouillon'}
+                  <span className="font-semibold text-gray-900">{b.numero}</span>
+                  <span
+                    className="text-xs px-2 py-0.5 rounded-full font-medium inline-block"
+                    style={{ backgroundColor: (b.sous_traitant as SousTraitant)?.couleur + '20', color: (b.sous_traitant as SousTraitant)?.couleur }}
+                  >
+                    {(b.sous_traitant as SousTraitant)?.nom}
                   </span>
                 </div>
-                <p className="text-sm text-gray-500 mt-0.5">
-                  {r.fournisseur} → {(r.sous_traitant as SousTraitant)?.nom} — {r.technicien}
-                </p>
+                <p className="text-sm text-gray-500 mt-0.5">{b.distributeur} — BL: {b.bl_fournisseur}</p>
+                <p className="text-xs text-gray-400 mt-0.5">{b.receptionne_par}</p>
               </div>
               <div className="text-right text-xs text-gray-400">
-                <div>{format(new Date(r.created_at), 'dd/MM/yyyy', { locale: fr })}</div>
-                <div>BL: {r.numero_bl_fournisseur}</div>
+                {b.date_reception
+                  ? format(new Date(b.date_reception), 'dd/MM/yyyy', { locale: fr })
+                  : format(new Date(b.created_at), 'dd/MM/yyyy', { locale: fr })}
               </div>
             </Link>
           ))}

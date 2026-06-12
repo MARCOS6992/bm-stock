@@ -43,7 +43,8 @@ export default function PosesPage() {
 
       {poses.length === 0 ? (
         <div className="bg-white rounded-xl p-8 text-center text-gray-500 shadow-sm border border-gray-100">
-          Aucun bon de pose. <Link href="/poses/new" className="text-green-600 hover:underline">Créer le premier</Link>
+          Aucun bon de pose.{' '}
+          <Link href="/poses/new" className="text-green-600 hover:underline">Créer le premier</Link>
         </div>
       ) : (
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 divide-y divide-gray-100">
@@ -56,21 +57,20 @@ export default function PosesPage() {
               <div>
                 <div className="flex items-center gap-2">
                   <span className="font-semibold text-gray-900">{p.numero}</span>
-                  <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
-                    p.statut === 'finalise' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-700'
-                  }`}>
-                    {p.statut === 'finalise' ? 'Finalisé' : 'Brouillon'}
+                  <span
+                    className="text-xs px-2 py-0.5 rounded-full font-medium"
+                    style={{ backgroundColor: (p.sous_traitant as SousTraitant)?.couleur + '20', color: (p.sous_traitant as SousTraitant)?.couleur }}
+                  >
+                    {(p.sous_traitant as SousTraitant)?.nom}
                   </span>
                 </div>
-                <p className="text-sm text-gray-500 mt-0.5">
-                  {p.client} — {(p.sous_traitant as SousTraitant)?.nom}
-                </p>
+                <p className="text-sm text-gray-500 mt-0.5">{p.client}</p>
                 {p.adresse_chantier && (
                   <p className="text-xs text-gray-400 mt-0.5 truncate max-w-xs">{p.adresse_chantier}</p>
                 )}
               </div>
               <div className="text-right text-xs text-gray-400">
-                <div>{format(new Date(p.created_at), 'dd/MM/yyyy', { locale: fr })}</div>
+                {format(new Date(p.created_at), 'dd/MM/yyyy', { locale: fr })}
                 {p.code_cee && <div className="mt-1">CEE: {p.code_cee}</div>}
               </div>
             </Link>
